@@ -1,0 +1,86 @@
+# openspec/config.yaml
+schema: spec-driven
+
+project:
+  name: Prueba-Wompi
+  description: Credit Card Payment Checkout with Wompi Payment API integration
+  stack:
+    mobile:
+      framework: React Native (latest stable)
+      state_management: Redux
+      test_runner: Jest
+    backend:
+      framework: Nest.js (latest stable)
+      language: TypeScript
+      test_runner: Jest
+  architecture: Monorepo with mobile app (React Native) and backend API (Nest.js)
+  integrations:
+    - Wompi Payment API (sandbox/UAT environment)
+
+context: |
+  Greenfield project for a Credit Card Payment Checkout system.
+  Mobile app built with React Native + Redux for state management.
+  Backend API built with TypeScript + Nest.js.
+  Integration with Wompi Payment Gateway in sandbox/UAT.
+  Target coverage >= 80% for both mobile and backend.
+
+testing:
+  strict_tdd: true
+  runners:
+    - name: Jest
+      command: "npx jest"
+      locations:
+        - mobile/ (React Native)
+        - backend/ (Nest.js)
+  layers:
+    unit:
+      available: true
+      tool: Jest
+    integration:
+      available: true
+      tool: Jest + supertest (backend) / Jest + React Native Testing Library (mobile)
+    e2e:
+      available: false
+      tool: Detox (mobile, planned) / Playwright (backend, planned)
+  coverage:
+    available: true
+    command: "npx jest --coverage"
+    threshold: 80
+  quality:
+    linter:
+      available: true
+      tool: ESLint
+    type_checker:
+      available: true
+      tool: TypeScript (tsc)
+    formatter:
+      available: true
+      tool: Prettier
+
+rules:
+  proposal:
+    - Include Wompi API integration constraints and sandbox limitations
+    - Consider idempotency for payment submissions
+    - Address PCI compliance boundaries (frontend should never handle raw card data)
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - Tag requirements by layer (mobile, backend, integration)
+  design:
+    - Include sequence diagrams for payment flows
+    - Document Wompi API endpoints, payloads, and webhooks
+    - Define error handling strategy for payment failures
+  tasks:
+    - Group by layer (mobile / backend), use hierarchical numbering
+    - Keep tasks completable in one session
+    - Include testing tasks alongside implementation tasks
+  apply:
+    - Follow scaffolding patterns once stack is initialized
+    tdd: true
+    test_command: "npx jest"
+  verify:
+    test_command: "npx jest --coverage"
+    build_command: "npx tsc --noEmit"
+    coverage_threshold: 80
+  archive:
+    - Warn before merging destructive deltas
