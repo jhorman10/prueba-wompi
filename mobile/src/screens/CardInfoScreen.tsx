@@ -1,0 +1,259 @@
+import React, { useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+} from 'react-native';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '../store/store';
+import { setCardInfo, advanceStep } from '../store/slices/checkoutSlice';
+import { CardInput } from '../components/CardInput';
+import {
+  detectBrand,
+  isValidLuhn,
+  formatCardNumber,
+  getBrandLogo,
+  CardBrand,
+} from '../services/cardDetection';
+
+interface CardInfoScreenProps {
+  navigation?: {
+    navigate: (screen: string) => void;
+  };
+}
+
+interface CardFormErrors {
+  number?: string;
+  expiry?: string;
+  cvc?: string;
+  name?: string;
+}
+
+function validateExpiry(value: string): string | undefined {
+  const cleaned = value.replace(/\D/g, '');
+  if (cleaned.length < 4) return 'Enter valid expiry';
+  const month = parseInt(cleaned.slice(0, 2), 10);
+  const year = parseInt(cleaned.slice(2), 10) + 2000;
+  if (month < 1 || month > 12) return 'Invalid month';
+  const now = new Date();
+  if (year < now.getFullYear() || (year === now.getFullYear() && month < now.getMonth() + 1)) {
+    return 'Card expired';
+  }
+  return undefined;
+}
+
+/**
+ * Card info screen — collects credit card details with brand detection and validation.
+ */
+export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
+  const dispatch = useDispatch<AppDispatch>();
+  const checkout = useSelector((state: RootState) => state.checkout);
+
+  const [number, setNumber] = useState(checkout.cardInfo?.number ?? '');
+  const [expiry, setExpiry] = useState(checkout.cardInfo?.expiry ?? '');
+  const [cvc, setCvc] = useState(checkout.cardInfo?.cvc ?? '');
+  const [cardholderName, setCardholderName] = useState(
+    checkout.cardInfo?.cardholderName ?? '',
+  );
+  const [errors, setErrors] = useState<CardFormErrors>({});
+
+  const brand: CardBrand = number ? detectBrand(number) : 'unknown';
+  const brandLogo = getBrandLogo(brand);
+
+  const handleNumberChange = useCallback((text: string) => {
+    const cleaned = text.replace(/\D/g, '').slice(0, 16);
+    setNumber(cleaned);
+    setErrors((prev) => ({ ...prev, number: undefined }));
+  }, []);
+
+  const handleExpiryChange = useCallback((text: string) => {
+    const cleaned = text.replace(/\D/g, '').slice(0, 4);
+    if (cleaned.length > 2) {
+      setExpiry(cleaned.slice(0, 2) + '/' + cleaned.slice(2));
+    } else {
+      setExpiry(cleaned);
+    }
+    setErrors((prev) => ({ ...prev, expiry: undefined }));
+  }, []);
+
+  const handleCvcChange = useCallback((text: string) => {
+    const cleaned = text.replace(/\D/g, '').slice(0, 4);
+    setCvc(cleaned);
+    setErrors((prev) => ({ ...prev, cvc: undefined }));
+  }, []);
+
+  const handleNameChange = useCallback((text: string) => {
+    setCardholderName(text);
+    setErrors((prev) => ({ ...prev, name: undefined }));
+  }, []);
+
+  const validate = (): boolean => {
+    const newErrors: CardFormErrors = {};
+
+    if (!cardholderName.trim()) {
+      newErrors.name = 'Cardholder name is required';
+    }
+
+    if (number.length < 13) {
+      newErrors.number = 'Card number too short';
+    } else if (!isValidLuhn(number)) {
+      newErrors.number = 'Invalid card number';
+    }
+
+    const expiryError = validateExpiry(expiry);
+    if (expiryError) newErrors.expiry = expiryError;
+
+    if (cvc.length < 3) {
+      newErrors.cvc = 'Invalid CVC';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleContinue = () => {
+    if (!validate()) return;
+
+    dispatch(
+      setCardInfo({
+        number,
+        expiry,
+        cvc,
+        cardholderName,
+        brand,
+      }),
+    );
+    dispatch(advanceStep());
+    navigation?.navigate('PaymentSummary');
+  };
+
+  const displayNumber = formatCardNumber(number);
+
+  return (
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Text style={styles.heading}>Credit Card Info</Text>
+
+      {/* Card number with brand logo */}
+      <View style={styles.cardNumberRow}>
+        <View style={styles.cardNumberInput}>
+          <CardInput
+            value={displayNumber}
+            onChangeText={handleNumberChange}
+            placeholder="0000 0000 0000 0000"
+            label="Card Number"
+            error={errors.number}
+            keyboardType="number-pad"
+          />
+        </View>
+        {brandLogo && (
+          <View style={styles.brandLogo}>
+            <Text style={styles.brandLogoText}>
+              {brand === 'visa' ? 'VISA' : 'MC'}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.row}>
+        <View style={styles.halfField}>
+          <CardInput
+            value={expiry}
+            onChangeText={handleExpiryChange}
+            placeholder="MM/YY"
+            label="Expiry"
+            error={errors.expiry}
+            keyboardType="number-pad"
+            maxLength={5}
+          />
+        </View>
+        <View style={styles.halfField}>
+          <CardInput
+            value={cvc}
+            onChangeText={handleCvcChange}
+            placeholder="123"
+            label="CVC"
+            error={errors.cvc}
+            keyboardType="number-pad"
+            maxLength={4}
+            secureTextEntry
+          />
+        </View>
+      </View>
+
+      <CardInput
+        value={cardholderName}
+        onChangeText={handleNameChange}
+        placeholder="John Doe"
+        label="Cardholder Name"
+        error={errors.name}
+      />
+
+      <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
+        <Text style={styles.continueButtonText}>Continue</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  heading: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 24,
+  },
+  cardNumberRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  cardNumberInput: {
+    flex: 1,
+  },
+  brandLogo: {
+    marginLeft: 8,
+    marginTop: 28,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 6,
+  },
+  brandLogoText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#333',
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  halfField: {
+    flex: 1,
+  },
+  continueButton: {
+    marginTop: 24,
+    backgroundColor: '#6200ee',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+  },
+  continueButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
