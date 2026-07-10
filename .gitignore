@@ -1,19 +1,71 @@
+# Dependencies
 node_modules/
-.expo/
+
+# Build outputs
 dist/
+build/
+
+# React Native / Mobile (Android)
+mobile/android/app/build/
+mobile/android/app/.cxx/
+mobile/android/.gradle/
+mobile/android/build/
+mobile/android/local.properties
+mobile/android/captures/
+*.apk
+*.aab
+*.hprof
+
+# React Native / Mobile (iOS)
+mobile/ios/Pods/
+mobile/ios/build/
+mobile/ios/*.xcworkspace/xcuserdata/
+mobile/ios/.xcode.env
+mobile/ios/.xcode.env.local
+
+# React Native / Mobile (general)
+*.jsbundle
+*.jsbundle.map
+*.orig.*
+web-build/
+.expo/
+.metro-health-check*
+
+# Backend (Nest.js)
+backend/dist/
+backend/uploads/
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+.env.production
+.env.staging
+
+# Logs
+*.log
 npm-debug.*
+
+# Testing
+coverage/
+
+# TypeScript
+*.tsbuildinfo
+
+# Secrets
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
-*.orig.*
-web-build/
-.DS_Store
-*.log
-.env
-.env.local
-.env.production
-coverage/
-*.tsbuildinfo
+
+# Misc
 NextSteps.md
