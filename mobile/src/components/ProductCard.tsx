@@ -3,6 +3,9 @@ import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import { Product } from '../store/slices/productsSlice';
 import { PriceTag } from './PriceTag';
 
+// cache: 'force-cache' (iOS) keeps the product image cached after first load.
+// On Android the prop is a harmless no-op; no external dependency required.
+
 interface ProductCardProps {
   product: Product;
   onSelect: (product: Product) => void;
@@ -20,7 +23,7 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
     >
       {product.imageUrl ? (
         <Image
-          source={{ uri: product.imageUrl }}
+          source={{ uri: product.imageUrl, cache: 'force-cache' }}
           style={styles.image}
           resizeMode="cover"
         />
