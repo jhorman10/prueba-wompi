@@ -1,4 +1,5 @@
 import { Controller, Post, Get, Param, Body, HttpCode, HttpException, HttpStatus } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { TokenizeCardUseCase } from '../application/tokenize-card.usecase';
 import { ProcessPaymentUseCase, InsufficientStockError } from '../application/process-payment.usecase';
 import { ITransactionRepository, TRANSACTION_REPOSITORY } from '../domain/transaction.repository';
@@ -27,7 +28,7 @@ export class PaymentsController {
       cardholderName: body.name,
     });
 
-    return { token: result.token };
+    return { token: result.token, idempotencyKey: randomUUID() };
   }
 
   @Post('charge')
@@ -36,27 +37,23 @@ export class PaymentsController {
     @Body()
     body: {
       token: string;
-      productId: string;
-      quantity: number;
+      items: Array<{ productId: string; quantity: number }>;
       idempotencyKey: string;
       cardLastFour: string;
       cardholderName: string;
-      totalAmount: number;
     },
   ) {
-    if (!body.token || !body.productId || !body.quantity || !body.idempotencyKey) {
+    if (!body.token || !body.items?.length || !body.idempotencyKey) {
       throw new HttpException('Missing required charge fields', HttpStatus.BAD_REQUEST);
     }
 
     try {
       const result = await this.processPaymentUseCase.execute({
         token: body.token,
-        productId: body.productId,
-        quantity: body.quantity,
+        items: body.items,
         idempotencyKey: body.idempotencyKey,
         cardLastFour: body.cardLastFour || '',
         cardholderName: body.cardholderName || '',
-        totalAmount: body.totalAmount,
       });
 
       return { transaction: result.transaction, isDuplicate: result.isDuplicate };

@@ -36,9 +36,8 @@ describe('checkoutSlice', () => {
 
   it('sets card info', () => {
     const cardInfo = {
-      number: '4111111111111111',
+      lastFour: '1111',
       expiry: '12/25',
-      cvc: '123',
       cardholderName: 'John Doe',
       brand: 'visa' as const,
     };
@@ -60,9 +59,8 @@ describe('checkoutSlice', () => {
     const stateWithCard: CheckoutState = {
       ...initialState,
       cardInfo: {
-        number: '4111111111111111',
+        lastFour: '1111',
         expiry: '12/25',
-        cvc: '123',
         cardholderName: 'John Doe',
         brand: 'visa',
       },

@@ -3,9 +3,10 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
+  Pressable,
   ScrollView,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
@@ -15,13 +16,13 @@ import {
   detectBrand,
   isValidLuhn,
   formatCardNumber,
-  getBrandLogo,
+  getBrandName,
   CardBrand,
 } from '../services/cardDetection';
 
 interface CardInfoScreenProps {
   navigation?: {
-    navigate: (screen: string) => void;
+    navigate: (screen: string, params?: object) => void;
   };
 }
 
@@ -52,16 +53,18 @@ export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
   const dispatch = useDispatch<AppDispatch>();
   const checkout = useSelector((state: RootState) => state.checkout);
 
-  const [number, setNumber] = useState(checkout.cardInfo?.number ?? '');
+  // PAN and CVV stay in local state ONLY — never persisted to Redux (PCI DSS)
+  const [number, setNumber] = useState('');
   const [expiry, setExpiry] = useState(checkout.cardInfo?.expiry ?? '');
-  const [cvc, setCvc] = useState(checkout.cardInfo?.cvc ?? '');
+  const [cvc, setCvc] = useState('');
   const [cardholderName, setCardholderName] = useState(
     checkout.cardInfo?.cardholderName ?? '',
   );
   const [errors, setErrors] = useState<CardFormErrors>({});
+  const [submitting, setSubmitting] = useState(false);
 
   const brand: CardBrand = number ? detectBrand(number) : 'unknown';
-  const brandLogo = getBrandLogo(brand);
+  const brandName = getBrandName(brand);
 
   const handleNumberChange = useCallback((text: string) => {
     const cleaned = text.replace(/\D/g, '').slice(0, 16);
@@ -114,20 +117,32 @@ export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!validate()) return;
 
-    dispatch(
-      setCardInfo({
-        number,
-        expiry,
-        cvc,
-        cardholderName,
-        brand,
-      }),
-    );
-    dispatch(advanceStep());
-    navigation?.navigate('PaymentSummary');
+    setSubmitting(true);
+    try {
+      // Yield so the loading state is reflected in the UI while we process.
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      // Only store safe card info in Redux (no PAN, no CVV — PCI DSS)
+      dispatch(
+        setCardInfo({
+          lastFour: number.slice(-4),
+          brand,
+          cardholderName,
+          expiry,
+        }),
+      );
+      dispatch(advanceStep());
+      // Pass sensitive data (PAN, CVV) via route params — never via Redux
+      navigation?.navigate('PaymentSummary', {
+        cardNumber: number,
+        cardExpiry: expiry,
+        cardCvc: cvc,
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const displayNumber = formatCardNumber(number);
@@ -152,17 +167,15 @@ export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
             keyboardType="number-pad"
           />
         </View>
-        {brandLogo && (
+        {brandName ? (
           <View style={styles.brandLogo}>
-            <Text style={styles.brandLogoText}>
-              {brand === 'visa' ? 'VISA' : 'MC'}
-            </Text>
+            <Text style={styles.brandLogoText}>{brandName}</Text>
           </View>
-        )}
+        ) : null}
       </View>
 
       <View style={styles.row}>
-        <View style={styles.halfField}>
+        <View style={[styles.halfField, styles.halfFieldFirst]}>
           <CardInput
             value={expiry}
             onChangeText={handleExpiryChange}
@@ -173,7 +186,7 @@ export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
             maxLength={5}
           />
         </View>
-        <View style={styles.halfField}>
+        <View style={[styles.halfField, styles.halfFieldSecond]}>
           <CardInput
             value={cvc}
             onChangeText={handleCvcChange}
@@ -195,9 +208,17 @@ export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
         error={errors.name}
       />
 
-      <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-        <Text style={styles.continueButtonText}>Continue</Text>
-      </TouchableOpacity>
+      <Pressable
+        style={({ pressed }) => [styles.continueButton, pressed && { opacity: 0.8 }]}
+        onPress={handleContinue}
+        disabled={submitting}
+      >
+        {submitting ? (
+          <ActivityIndicator color="#fff" testID="continue-spinner" />
+        ) : (
+          <Text style={styles.continueButtonText}>Continue</Text>
+        )}
+      </Pressable>
     </ScrollView>
   );
 }
@@ -239,10 +260,15 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    gap: 12,
   },
   halfField: {
     flex: 1,
+  },
+  halfFieldFirst: {
+    marginRight: 6,
+  },
+  halfFieldSecond: {
+    marginLeft: 6,
   },
   continueButton: {
     marginTop: 24,

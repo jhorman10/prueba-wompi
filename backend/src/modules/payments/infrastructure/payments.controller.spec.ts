@@ -58,6 +58,45 @@ describe('PaymentsController', () => {
       });
     });
 
+    it('should return a server-generated idempotencyKey (A5)', async () => {
+      mockTokenizeUseCase.execute.mockResolvedValue({
+        token: 'tok_abc123',
+        cardLastFour: '4242',
+      });
+
+      const result = await controller.tokenize({
+        number: '4242424242424242',
+        expiry: '12/28',
+        cvc: '123',
+        name: 'John Doe',
+      });
+
+      expect(typeof result.idempotencyKey).toBe('string');
+      expect(result.idempotencyKey.length).toBeGreaterThan(0);
+    });
+
+    it('should generate a unique idempotencyKey per tokenize call (A5)', async () => {
+      mockTokenizeUseCase.execute.mockResolvedValue({
+        token: 'tok_abc123',
+        cardLastFour: '4242',
+      });
+
+      const first = await controller.tokenize({
+        number: '4242424242424242',
+        expiry: '12/28',
+        cvc: '123',
+        name: 'John Doe',
+      });
+      const second = await controller.tokenize({
+        number: '4242424242424242',
+        expiry: '12/28',
+        cvc: '123',
+        name: 'John Doe',
+      });
+
+      expect(first.idempotencyKey).not.toBe(second.idempotencyKey);
+    });
+
     it('should throw 400 when missing required fields', async () => {
       await expect(
         controller.tokenize({ number: '', expiry: '12/28', cvc: '123', name: 'John' }),
@@ -86,12 +125,10 @@ describe('PaymentsController', () => {
 
       const result = await controller.charge({
         token: 'tok_abc',
-        productId: 'prod-1',
-        quantity: 2,
+        items: [{ productId: 'prod-1', quantity: 2 }],
         idempotencyKey: 'idemp-123',
         cardLastFour: '4242',
         cardholderName: 'John Doe',
-        totalAmount: 199998,
       });
 
       expect(result.transaction.status).toBe(TransactionStatus.COMPLETED);
@@ -106,12 +143,10 @@ describe('PaymentsController', () => {
       await expect(
         controller.charge({
           token: 'tok_abc',
-          productId: 'prod-1',
-          quantity: 3,
+          items: [{ productId: 'prod-1', quantity: 3 }],
           idempotencyKey: 'idemp-456',
           cardLastFour: '4242',
           cardholderName: 'John Doe',
-          totalAmount: 299997,
         }),
       ).rejects.toThrow(
         new HttpException(
@@ -125,12 +160,10 @@ describe('PaymentsController', () => {
       await expect(
         controller.charge({
           token: '',
-          productId: '',
-          quantity: 0,
+          items: [{ productId: '', quantity: 0 }],
           idempotencyKey: '',
           cardLastFour: '',
           cardholderName: '',
-          totalAmount: 0,
         }),
       ).rejects.toThrow(HttpException);
     });
@@ -149,12 +182,10 @@ describe('PaymentsController', () => {
 
       const result = await controller.charge({
         token: 'tok_dup',
-        productId: 'prod-1',
-        quantity: 1,
+        items: [{ productId: 'prod-1', quantity: 1 }],
         idempotencyKey: 'dup-key',
         cardLastFour: '4242',
         cardholderName: 'John',
-        totalAmount: 99999,
       });
 
       expect(result.isDuplicate).toBe(true);

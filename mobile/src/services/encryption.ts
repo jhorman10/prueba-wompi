@@ -25,10 +25,34 @@ interface Transform {
 const ENCRYPTED_KEYS = ['cart', 'checkout', 'transactions'];
 
 /**
- * Creates a redux-persist transformer that encrypts
- * sensitive slices (cart, checkout, transactions) using
- * react-native-encrypted-storage.
- * Non-sensitive slices pass through unmodified.
+ * Recursively strips Immer internals (string keys starting with `_`, e.g.
+ * `_y`, `_z`, `_A`) from persisted/rehydrated state. Works at every nesting
+ * level so rehydrated slices never carry draft markers. Real app state has no
+ * `_`-prefixed field names, so only Immer noise is removed.
+ */
+function stripImmer(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((v) => stripImmer(v));
+  }
+  if (value && typeof value === 'object') {
+    const r: Record<string, unknown> = {};
+    for (const key of Object.keys(value as Record<string, unknown>)) {
+      if (!key.startsWith('_')) {
+        r[key] = stripImmer((value as Record<string, unknown>)[key]);
+      }
+    }
+    return r;
+  }
+  return value;
+}
+
+/**
+ * Creates a single redux-persist transformer that handles BOTH encryption and
+ * Immer cleanup in one place. Previously the async `encryptor` and a separate
+ * sync `immerFix` ran as two transforms, which could race. Combining them into
+ * a single transform removes that ordering ambiguity:
+ *   - `in`: encrypt the slice into EncryptedStorage, pass state through.
+ *   - `out`: decrypt from EncryptedStorage, then strip Immer internals.
  */
 export function createEncryptor(): Transform {
   return {
@@ -57,12 +81,12 @@ export function createEncryptor(): Transform {
           const stored = await EncryptedStorage.getItem(`persist:${key}`);
           if (stored) {
             const decoded = JSON.parse(atob(stored));
-            return decoded;
+            return stripImmer(decoded) as TransformState;
           }
-          return state;
         } catch {
-          return state;
+          // fall through to cleaning the inbound state
         }
+        return stripImmer(state) as TransformState;
       }
       return state;
     },

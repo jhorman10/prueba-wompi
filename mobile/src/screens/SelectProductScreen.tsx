@@ -3,8 +3,9 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
+  Pressable,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
@@ -34,6 +35,7 @@ export function SelectProductScreen({
   const product = route?.params?.product;
 
   const [quantity, setQuantity] = useState(1);
+  const [adding, setAdding] = useState(false);
 
   if (!product) {
     return (
@@ -43,9 +45,16 @@ export function SelectProductScreen({
     );
   }
 
-  const handleAddToCart = () => {
-    dispatch(addItem({ productId: product.id, quantity }));
-    navigation?.navigate('Home');
+  const handleAddToCart = async () => {
+    setAdding(true);
+    try {
+      // Yield so the loading state is reflected in the UI while we process.
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      dispatch(addItem({ productId: product.id, quantity }));
+      navigation?.navigate('Home');
+    } finally {
+      setAdding(false);
+    }
   };
 
   return (
@@ -69,35 +78,40 @@ export function SelectProductScreen({
       <PriceTag cents={product.price} style={styles.price} />
 
       <View style={styles.quantityRow}>
-        <TouchableOpacity
-          style={styles.qtyButton}
+        <Pressable
+          style={({ pressed }) => [styles.qtyButton, pressed && { opacity: 0.8 }]}
           onPress={() => setQuantity(Math.max(1, quantity - 1))}
         >
           <Text style={styles.qtyButtonText}>-</Text>
-        </TouchableOpacity>
+        </Pressable>
         <Text style={styles.quantity}>{quantity}</Text>
-        <TouchableOpacity
-          style={styles.qtyButton}
+        <Pressable
+          style={({ pressed }) => [styles.qtyButton, pressed && { opacity: 0.8 }]}
           onPress={() => setQuantity(Math.min(product.stock, quantity + 1))}
         >
           <Text style={styles.qtyButtonText}>+</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       <Text style={styles.total}>
         Total: ${((product.price * quantity) / 100).toFixed(2)}
       </Text>
 
-      <TouchableOpacity
-        style={[
+      <Pressable
+        style={({ pressed }) => [
           styles.addButton,
           quantity > product.stock && styles.disabledButton,
+          pressed && { opacity: 0.8 },
         ]}
         onPress={handleAddToCart}
-        disabled={quantity > product.stock}
+        disabled={quantity > product.stock || adding}
       >
-        <Text style={styles.addButtonText}>Add to Cart</Text>
-      </TouchableOpacity>
+        {adding ? (
+          <ActivityIndicator color="#fff" testID="add-to-cart-spinner" />
+        ) : (
+          <Text style={styles.addButtonText}>Add to Cart</Text>
+        )}
+      </Pressable>
     </View>
   );
 }

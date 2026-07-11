@@ -23,6 +23,16 @@ export class ProductTypeOrmRepository implements IProductRepository {
     await this.ormRepo.update(id, { stock: newStock });
   }
 
+  async atomicDecrementStock(id: string, quantity: number): Promise<boolean> {
+    const result = await this.ormRepo
+      .createQueryBuilder()
+      .update(ProductEntity)
+      .set({ stock: () => `stock - :quantity` })
+      .where('id = :id AND stock >= :quantity', { id, quantity })
+      .execute();
+    return (result.affected ?? 0) > 0;
+  }
+
   async save(product: ProductEntity): Promise<ProductEntity> {
     return this.ormRepo.save(product);
   }

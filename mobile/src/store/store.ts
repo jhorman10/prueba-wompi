@@ -16,10 +16,13 @@ import cartReducer from './slices/cartSlice';
 import checkoutReducer from './slices/checkoutSlice';
 import transactionsReducer from './slices/transactionsSlice';
 
+// Single combined transform: encryption + Immer cleanup happen together so the
+// async encryptor and the (formerly separate) sync Immer fix cannot race.
 const encryptor = createEncryptor();
 
 const persistConfig = {
   key: 'root',
+  version: 3,
   storage: AsyncStorage,
   whitelist: ['cart', 'checkout', 'transactions'],
   transforms: [encryptor as any],
@@ -40,6 +43,9 @@ export const store = configureStore({
     getDefaultMiddleware({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+      },
+      immutableCheck: {
+        ignoredPaths: ['cart', 'checkout', 'transactions'],
       },
     }),
 });

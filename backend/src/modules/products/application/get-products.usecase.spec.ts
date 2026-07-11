@@ -16,6 +16,7 @@ describe('GetProductsUseCase', () => {
       findAll: jest.fn().mockResolvedValue(mockProducts),
       findById: jest.fn(),
       updateStock: jest.fn(),
+      atomicDecrementStock: jest.fn(),
       save: jest.fn(),
     };
 
@@ -33,6 +34,7 @@ describe('GetProductsUseCase', () => {
       findAll: jest.fn().mockResolvedValue([]),
       findById: jest.fn(),
       updateStock: jest.fn(),
+      atomicDecrementStock: jest.fn(),
       save: jest.fn(),
     };
 
@@ -48,6 +50,7 @@ describe('GetProductsUseCase', () => {
       findAll: jest.fn().mockRejectedValue(new Error('DB connection failed')),
       findById: jest.fn(),
       updateStock: jest.fn(),
+      atomicDecrementStock: jest.fn(),
       save: jest.fn(),
     };
 

@@ -1,12 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store/store';
 import { PriceTag } from '../components/PriceTag';
 
 interface TransactionStatusScreenProps {
   navigation?: {
-    navigate: (screen: string) => void;
+    navigate: (screen: string, params?: object) => void;
   };
   route?: {
     params: {
@@ -36,12 +36,12 @@ export function TransactionStatusScreen({
     return (
       <View style={styles.center}>
         <Text style={styles.noDataText}>No transaction data</Text>
-        <TouchableOpacity
-          style={styles.homeButton}
+        <Pressable
+          style={({ pressed }) => [styles.homeButton, pressed && { opacity: 0.8 }]}
           onPress={() => navigation?.navigate('Home')}
         >
           <Text style={styles.homeButtonText}>Back to Home</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     );
   }
@@ -84,12 +84,12 @@ export function TransactionStatusScreen({
         </View>
       </View>
 
-      <TouchableOpacity
-        style={styles.homeButton}
+      <Pressable
+        style={({ pressed }) => [styles.homeButton, pressed && { opacity: 0.8 }]}
         onPress={() => navigation?.navigate('Home')}
       >
         <Text style={styles.homeButtonText}>Back to Home</Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }

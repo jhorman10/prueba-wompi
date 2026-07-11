@@ -58,7 +58,7 @@ describe('api client', () => {
     const axiosInstance = mockedAxios.create();
     (axiosInstance.post as jest.Mock).mockResolvedValue({ data: mockCharge });
 
-    const chargeData = { token: 'tok_test_123', productId: 'p1', quantity: 2, idempotencyKey: 'key_123', cardLastFour: '1111', cardholderName: 'John Doe', totalAmount: 5998 };
+    const chargeData = { token: 'tok_test_123', items: [{ productId: 'p1', quantity: 2 }], idempotencyKey: 'key_123', cardLastFour: '1111', cardholderName: 'John Doe' };
     const result = await api.chargePayment(chargeData);
     expect(axiosInstance.post).toHaveBeenCalledWith('/payments/charge', chargeData);
     expect(result).toEqual(mockCharge);

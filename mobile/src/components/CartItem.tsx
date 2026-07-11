@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { PriceTag } from './PriceTag';
 
 interface CartItemProps {
@@ -28,9 +28,9 @@ export function CartItem({
       </View>
       <View style={styles.right}>
         <PriceTag cents={unitPrice * quantity} />
-        <TouchableOpacity onPress={onRemove} style={styles.removeButton}>
+        <Pressable onPress={onRemove} style={({pressed}) => [styles.removeButton, pressed && {opacity: 0.8}]}>
           <Text style={styles.removeText}>Remove</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </View>
   );
