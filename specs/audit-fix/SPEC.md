@@ -361,10 +361,10 @@ El backend recibe `totalAmount` del cliente y lo usa directamente. Un cliente ma
 3. Escribir tests unitarios para `paymentService.processPayment()`.
 
 #### Criterios de aceptación
-- [ ] `paymentService.processPayment` es testeable con mocks
-- [ ] El componente `PaymentSummaryScreen` no tiene lógica de negocio de pagos
-- [ ] Cobertura de tests ≥ 85% en el nuevo servicio
-- [ ] El flujo completo funciona igual que antes
+- [x] `paymentService.processPayment` es testeable con mocks
+- [x] El componente `PaymentSummaryScreen` no tiene lógica de negocio de pagos
+- [x] Cobertura de tests ≥ 85% en el nuevo servicio
+- [x] El flujo completo funciona igual que antes
 
 #### Riesgos
 - Ninguno si se extrae correctamente la lógica
@@ -450,9 +450,9 @@ Cada screen crea su propio `createApiClient(API_BASE_URL)` directamente. No hay 
 3. En producción, el deploy debe configurar `CORS_ORIGINS` con los orígenes específicos.
 
 #### Criterios de aceptación
-- [ ] Sin variable `CORS_ORIGINS`: funciona como hoy (wildcard para desarrollo)
-- [ ] Con `CORS_ORIGINS` definido: solo permite esos orígenes
-- [ ] Tests de integración de CORS
+- [x] Sin variable `CORS_ORIGINS`: funciona como hoy (wildcard para desarrollo)
+- [x] Con `CORS_ORIGINS` definido: solo permite esos orígenes
+- [x] Tests de integración de CORS
 
 #### Riesgos
 - Bajo. Es cambio configurable.
@@ -474,9 +474,9 @@ El cliente genera `idempotencyKey` como `${Date.now()}-${Math.random().toString(
 4. En el backend, mejorar la verificación: el `idempotencyKey` debe incluir un hash del payload completo para detectar manipulación.
 
 #### Criterios de aceptación
-- [ ] Dos requests idénticas con la misma key: solo una se procesa
-- [ ] Dos requests con diferente key pero mismo contenido: se procesan ambas (intencional)
-- [ ] El cliente no puede manipular la key para evitar la detección de duplicados
+- [x] Dos requests idénticas con la misma key: solo una se procesa
+- [x] Dos requests con diferente key pero mismo contenido: se procesan ambas (intencional)
+- [x] El cliente no puede manipular la key para evitar la detección de duplicados
 
 #### Riesgos
 - Cambio en el contrato de API de tokenize
@@ -541,9 +541,9 @@ useEffect(() => {
 O mejor, extraer la lógica a un custom hook `useProducts()`.
 
 #### Criterios de aceptación
-- [ ] No hay warnings de linter
-- [ ] No hay re-renders infinitos
-- [ ] `fetchProducts` no causa stale closures
+- [x] No hay warnings de linter
+- [x] No hay re-renders infinitos
+- [x] `fetchProducts` no causa stale closures
 
 #### Riesgos
 - Bajo
@@ -589,9 +589,9 @@ Cada componente lee slices completos y deriva datos en el render (`totalCents`, 
 2. Actualizar screens para usar los selectores.
 
 #### Criterios de aceptación
-- [ ] `selectCartCount` y `selectTotalCents` son memoizados
-- [ ] Los componentes consumen selectores, no slices directamente
-- [ ] Tests de selectores
+- [x] `selectCartCount` y `selectTotalCents` son memoizados
+- [x] Los componentes consumen selectores, no slices directamente
+- [x] Tests de selectores
 
 #### Riesgos
 - Bajo. Refactor localizado.
@@ -637,9 +637,9 @@ El `encryptor` transform es async (in/out devuelven Promise), mientras que `imme
 3. Eliminar `encryptor` import y usar solo `combinedTransform`.
 
 #### Criterios de aceptación
-- [ ] Los datos persistidos están encriptados
-- [ ] Al rehidratar, no hay propiedades Immer internas
-- [ ] No hay race conditions ni errores de "undefined is not an object"
+- [x] Los datos persistidos están encriptados
+- [x] Al rehidratar, no hay propiedades Immer internas
+- [x] No hay race conditions ni errores de "undefined is not an object"
 
 #### Riesgos
 - Cambio en el mecanismo de persistencia. Podría perder datos existentes al migrar.
@@ -705,8 +705,8 @@ halfField: {
 ```
 
 #### Criterios de aceptación
-- [ ] El espaciado entre campos es de 12px en todas las plataformas
-- [ ] No hay warning de estilo
+- [x] El espaciado entre campos es de 12px en todas las plataformas
+- [x] No hay warning de estilo
 
 #### Riesgos
 - Bajo.
@@ -782,9 +782,9 @@ const brandLogos: Record<CardBrand, ImageSourcePropType | null> = {
 Recomendación: **Opción A** (mínimo esfuerzo, sin assets nuevos).
 
 #### Criterios de aceptación
-- [ ] `getBrandLogo` eliminado o reemplazado por `getBrandName`
-- [ ] Se muestra el nombre correcto para cada brand detectada
-- [ ] TypeScript compila
+- [x] `getBrandLogo` eliminado o reemplazado por `getBrandName`
+- [x] Se muestra el nombre correcto para cada brand detectada
+- [x] TypeScript compila
 
 #### Riesgos
 - Bajo.
@@ -847,6 +847,10 @@ const handleRefresh = useCallback(async () => {
 
 ---
 
+#### Criterios de aceptación
+- [x] `FlatList` en `HomeScreen` recibe `refreshing` y `onRefresh`
+- [x] `handleRefresh` invoca `fetchProducts` y alterna `refreshing`
+
 ### [m2] Sin loading state en botones críticos
 
 **Severidad**: BAJO  
@@ -857,6 +861,10 @@ const handleRefresh = useCallback(async () => {
 - `CardInfoScreen`: Agregar `useState(false)` para el botón "Continue". Deshabilitar mientras se valida y navega.
 
 ---
+
+#### Criterios de aceptación
+- [x] `SelectProductScreen`: botón "Add to Cart" se deshabilita y muestra indicador durante el dispatch
+- [x] `CardInfoScreen`: botón "Continue" se deshabilita y muestra indicador durante la validación/navegación
 
 ### [m3] Sin caché de imágenes
 
@@ -879,6 +887,10 @@ import FastImage from 'react-native-fast-image';
 Si se quiere evitar dependencias, en iOS se puede usar `cache: 'force-cache'` en `Image` nativo.
 
 ---
+
+#### Criterios de aceptación
+- [x] `Image` en `ProductCard` usa `cache: 'force-cache'` (nativo, sin dependencias nuevas)
+- [x] Sin regresiones de lint/runtime
 
 ### [m4] Sin logging/error tracking en API client
 
@@ -905,6 +917,10 @@ client.interceptors.response.use(
 
 ---
 
+#### Criterios de aceptación
+- [x] Interceptor de respuesta en el singleton (`apiClient.ts`) registra request/response y errores en `__DEV__`
+- [x] Punto de extensión marcado claramente (sin SDK externo: Sentry/Crashlytics)
+
 ### [m5] `useDispatch` importado dos veces en CheckoutScreen
 
 **Severidad**: BAJO  
@@ -918,6 +934,10 @@ import { useSelector, useDispatch } from 'react-redux';
 Eliminar la línea 8.
 
 ---
+
+#### Criterios de aceptación
+- [x] `CheckoutScreen` une los dos imports en `import { useSelector, useDispatch } from 'react-redux';`
+- [x] Se elimina la línea duplicada de `useDispatch`
 
 ## Resumen de Cambios por Archivo
 
