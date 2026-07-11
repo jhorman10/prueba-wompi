@@ -139,6 +139,10 @@ export class ProcessPaymentUseCase {
         transaction.gatewayErrorCode = chargeResponse.errorCode || null;
       }
     } catch (error) {
+      // A stock conflict is a domain error the caller must surface (e.g. 409).
+      if (error instanceof InsufficientStockError) {
+        throw error;
+      }
       // Network error (or stock conflict) → mark as RETRIES_EXHAUSTED
       if (transaction.status !== TransactionStatus.FAILED) {
         await this.transactionRepository.update(transaction.id, {

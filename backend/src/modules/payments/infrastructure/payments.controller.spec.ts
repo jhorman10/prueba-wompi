@@ -190,6 +190,77 @@ describe('PaymentsController', () => {
 
       expect(result.isDuplicate).toBe(true);
     });
+
+    it('should rethrow an HttpException thrown by the use case', async () => {
+      mockProcessPaymentUseCase.execute.mockRejectedValue(
+        new HttpException('Bad request', HttpStatus.BAD_REQUEST),
+      );
+
+      await expect(
+        controller.charge({
+          token: 'tok_x',
+          items: [{ productId: 'prod-1', quantity: 1 }],
+          idempotencyKey: 'idemp-x',
+          cardLastFour: '4242',
+          cardholderName: 'John',
+        }),
+      ).rejects.toThrow(HttpException);
+    });
+
+    it('should wrap an unknown error as 500', async () => {
+      mockProcessPaymentUseCase.execute.mockRejectedValue(new Error('boom'));
+
+      await expect(
+        controller.charge({
+          token: 'tok_x',
+          items: [{ productId: 'prod-1', quantity: 1 }],
+          idempotencyKey: 'idemp-x',
+          cardLastFour: '4242',
+          cardholderName: 'John',
+        }),
+      ).rejects.toThrow(
+        new HttpException(
+          { statusCode: HttpStatus.INTERNAL_SERVER_ERROR, message: 'Payment processing failed', error: 'Internal Server Error' },
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+    });
+
+    it('should throw 400 when items is undefined', async () => {
+      await expect(
+        controller.charge({
+          token: 'tok_x',
+          items: undefined as any,
+          idempotencyKey: 'idemp-x',
+          cardLastFour: '4242',
+          cardholderName: 'John',
+        }),
+      ).rejects.toThrow(HttpException);
+    });
+
+    it('should default missing card fields to empty strings', async () => {
+      const tx = Object.assign(new TransactionEntity(), {
+        id: 'tx-defaults',
+        status: TransactionStatus.COMPLETED,
+      });
+
+      mockProcessPaymentUseCase.execute.mockResolvedValue({
+        transaction: tx,
+        isDuplicate: false,
+      });
+
+      await controller.charge({
+        token: 'tok_x',
+        items: [{ productId: 'prod-1', quantity: 1 }],
+        idempotencyKey: 'idemp-x',
+        cardLastFour: '',
+        cardholderName: '',
+      });
+
+      expect(mockProcessPaymentUseCase.execute).toHaveBeenCalledWith(
+        expect.objectContaining({ cardLastFour: '', cardholderName: '' }),
+      );
+    });
   });
 
   describe('GET /api/payments/:id', () => {

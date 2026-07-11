@@ -8,14 +8,28 @@ describe('ProductTypeOrmRepository', () => {
     findOne: jest.Mock;
     update: jest.Mock;
     save: jest.Mock;
+    createQueryBuilder: jest.Mock;
+  };
+  let mockQueryBuilder: {
+    update: jest.Mock;
+    set: jest.Mock;
+    where: jest.Mock;
+    execute: jest.Mock;
   };
 
   beforeEach(() => {
+    mockQueryBuilder = {
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
     mockOrmRepo = {
       find: jest.fn(),
       findOne: jest.fn(),
       update: jest.fn(),
       save: jest.fn(),
+      createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
     };
     repo = new ProductTypeOrmRepository(mockOrmRepo as any);
   });
@@ -76,5 +90,39 @@ describe('ProductTypeOrmRepository', () => {
 
     expect(result.name).toBe('New Product');
     expect(mockOrmRepo.save).toHaveBeenCalledWith(product);
+  });
+
+  describe('atomicDecrementStock', () => {
+    it('should build a conditional update and return true on success', async () => {
+      mockQueryBuilder.execute.mockResolvedValue({ affected: 1 });
+
+      const result = await repo.atomicDecrementStock('prod-1', 2);
+
+      expect(result).toBe(true);
+      expect(mockOrmRepo.createQueryBuilder).toHaveBeenCalledTimes(1);
+      expect(mockQueryBuilder.update).toHaveBeenCalledWith(ProductEntity);
+      expect(mockQueryBuilder.set).toHaveBeenCalledWith({ stock: expect.any(Function) });
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+        'id = :id AND stock >= :quantity',
+        { id: 'prod-1', quantity: 2 },
+      );
+      expect(mockQueryBuilder.execute).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return false when no rows were affected (insufficient stock)', async () => {
+      mockQueryBuilder.execute.mockResolvedValue({ affected: 0 });
+
+      const result = await repo.atomicDecrementStock('prod-1', 5);
+
+      expect(result).toBe(false);
+    });
+
+    it('should treat a missing affected count as false', async () => {
+      mockQueryBuilder.execute.mockResolvedValue({});
+
+      const result = await repo.atomicDecrementStock('prod-1', 1);
+
+      expect(result).toBe(false);
+    });
   });
 });

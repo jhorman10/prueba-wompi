@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { IPaymentGateway, CardDetails, TokenResponse, ChargeResponse } from '../domain/payment-gateway.interface';
+import {
+  IPaymentGateway,
+  CardDetails,
+  TokenResponse,
+  ChargeResponse,
+} from '../domain/payment-gateway.interface';
 import { ConfigService } from '@nestjs/config';
+
+type GatewayMode = 'simulate' | 'live';
 
 interface RetryConfig {
   maxRetries: number;
@@ -12,36 +19,41 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = { maxRetries: 3, baseDelayMs: 1000 };
 @Injectable()
 export class SandboxPaymentGateway implements IPaymentGateway {
   private readonly gatewayUrl: string;
+  private readonly gatewayApiKey: string;
+  private readonly mode: GatewayMode;
   private readonly retryConfig: RetryConfig;
   private readonly httpFetch: (url: string, options?: any) => Promise<any>;
 
-  constructor(
-    private readonly configService: ConfigService,
-  ) {
+  constructor(private readonly configService: ConfigService) {
     this.gatewayUrl =
       this.configService.get<string>('GATEWAY_URL') || 'https://sandbox-gateway.example.com';
+    this.gatewayApiKey = this.configService.get<string>('GATEWAY_API_KEY') || 'sandbox-key';
+    this.mode =
+      this.configService.get<string>('GATEWAY_MODE') === 'live' ? 'live' : 'simulate';
     this.retryConfig = {
-      maxRetries: this.configService.get<number>('GATEWAY_MAX_RETRIES') || DEFAULT_RETRY_CONFIG.maxRetries,
-      baseDelayMs: this.configService.get<number>('GATEWAY_BASE_DELAY_MS') || DEFAULT_RETRY_CONFIG.baseDelayMs,
+      maxRetries:
+        this.configService.get<number>('GATEWAY_MAX_RETRIES') || DEFAULT_RETRY_CONFIG.maxRetries,
+      baseDelayMs:
+        this.configService.get<number>('GATEWAY_BASE_DELAY_MS') || DEFAULT_RETRY_CONFIG.baseDelayMs,
     };
 
-    // Use global fetch if available (Node 18+), otherwise throw
     if (typeof globalThis.fetch === 'function') {
       this.httpFetch = globalThis.fetch.bind(globalThis);
     } else {
-      // Fallback that will trigger retry with a clear error
-      this.httpFetch = () => Promise.reject(new Error('HTTP fetch not available in this environment'));
+      this.httpFetch = () =>
+        Promise.reject(new Error('HTTP fetch not available in this environment'));
     }
   }
 
-  // Static factory for tests with custom fetch and retry config
   static createWithMock(
     configService: ConfigService,
     mockFetch: (url: string, options?: any) => Promise<any>,
     retryConfig?: RetryConfig,
+    mode: GatewayMode = 'live',
   ): SandboxPaymentGateway {
     const instance = new SandboxPaymentGateway(configService);
     (instance as any).httpFetch = mockFetch;
+    (instance as any).mode = mode;
     if (retryConfig) {
       (instance as any).retryConfig = retryConfig;
     }
@@ -51,17 +63,14 @@ export class SandboxPaymentGateway implements IPaymentGateway {
   async tokenize(details: CardDetails): Promise<TokenResponse> {
     const lastFour = details.number.slice(-4);
 
-    if (this.gatewayUrl.includes('sandbox')) {
-      return {
-        token: `tok_sandbox_${Date.now()}`,
-        cardLastFour: lastFour,
-      };
+    if (this.mode === 'simulate') {
+      return { token: `tok_sandbox_${Date.now()}`, cardLastFour: lastFour };
     }
 
     return this.executeWithRetry(async () => {
-      const response = await this.httpFetch(`${this.gatewayUrl}/v1/tokens`, {
+      const response = await this.httpFetch(`${this.gatewayUrl}/tokenize`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.authHeaders(),
         body: JSON.stringify({
           number: details.number,
           expiry: details.expiry,
@@ -77,7 +86,7 @@ export class SandboxPaymentGateway implements IPaymentGateway {
   }
 
   async charge(token: string, amount: number, idempotencyKey: string): Promise<ChargeResponse> {
-    if (this.gatewayUrl.includes('sandbox')) {
+    if (this.mode === 'simulate') {
       const isSuccess = token !== 'tok_fail';
       return {
         success: isSuccess,
@@ -89,9 +98,9 @@ export class SandboxPaymentGateway implements IPaymentGateway {
     }
 
     return this.executeWithRetry(async () => {
-      const response = await this.httpFetch(`${this.gatewayUrl}/v1/charges`, {
+      const response = await this.httpFetch(`${this.gatewayUrl}/transactions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.authHeaders(),
         body: JSON.stringify({ token, amount, idempotencyKey }),
       });
 
@@ -107,21 +116,36 @@ export class SandboxPaymentGateway implements IPaymentGateway {
         };
       }
       const data = await response.json();
-      return { success: true, gatewayReference: data.reference, status: 'APPROVED' };
+      const status = data.status as string;
+      return {
+        success: status === 'APPROVED',
+        gatewayReference: data.reference,
+        status,
+      };
     });
   }
 
   async getStatus(gatewayRef: string): Promise<string> {
-    if (this.gatewayUrl.includes('sandbox')) {
+    if (this.mode === 'simulate') {
       return 'APPROVED';
     }
 
     return this.executeWithRetry(async () => {
-      const response = await this.httpFetch(`${this.gatewayUrl}/v1/charges/${gatewayRef}`);
+      const response = await this.httpFetch(`${this.gatewayUrl}/transactions/${gatewayRef}`, {
+        method: 'GET',
+        headers: this.authHeaders(),
+      });
       if (!response.ok) throw new Error(`Gateway status check failed: ${response.status}`);
       const data = await response.json();
-      return data.status;
+      return data.status as string;
     });
+  }
+
+  private authHeaders(): Record<string, string> {
+    return {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${this.gatewayApiKey}`,
+    };
   }
 
   private async executeWithRetry<T>(fn: () => Promise<T>): Promise<T> {
