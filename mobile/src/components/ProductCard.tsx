@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import { Product } from '../store/slices/productsSlice';
 import { PriceTag } from './PriceTag';
 
@@ -14,10 +14,9 @@ interface ProductCardProps {
  */
 export function ProductCard({ product, onSelect }: ProductCardProps) {
   return (
-    <TouchableOpacity
-      style={styles.card}
+    <Pressable
+      style={({ pressed }) => [styles.card, pressed && { opacity: 0.8 }]}
       onPress={() => onSelect(product)}
-      activeOpacity={0.7}
     >
       {product.imageUrl ? (
         <Image
@@ -42,7 +41,7 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
           <Text style={styles.outOfStock}>Out of stock</Text>
         )}
       </View>
-    </TouchableOpacity>
+      </Pressable>
   );
 }
 
@@ -54,11 +53,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginVertical: 6,
     marginHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
   },
   image: {
     width: 80,

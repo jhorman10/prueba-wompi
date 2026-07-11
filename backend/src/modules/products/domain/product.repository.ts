@@ -4,6 +4,8 @@ export interface IProductRepository {
   findAll(): Promise<ProductEntity[]>;
   findById(id: string): Promise<ProductEntity | null>;
   updateStock(id: string, quantity: number): Promise<void>;
+  /** Atomically decrement stock. Returns false if insufficient stock. */
+  atomicDecrementStock(id: string, quantity: number): Promise<boolean>;
   save(product: ProductEntity): Promise<ProductEntity>;
 }
 

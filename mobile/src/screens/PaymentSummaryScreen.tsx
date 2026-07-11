@@ -3,7 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
+  Pressable,
   ScrollView,
   Alert,
 } from 'react-native';
@@ -18,32 +18,45 @@ import {
 import { addTransaction, TransactionRecord } from '../store/slices/transactionsSlice';
 import { clearCart } from '../store/slices/cartSlice';
 import { PriceTag } from '../components/PriceTag';
-import { createApiClient } from '../services/api';
-
-const API_URL = 'http://localhost:3000/api';
 
 interface PaymentSummaryScreenProps {
   navigation?: {
-    navigate: (screen: string) => void;
+    navigate: (screen: string, params?: object) => void;
+  };
+  route?: {
+    params: {
+      cardNumber: string;
+      cardExpiry: string;
+      cardCvc: string;
+    };
   };
 }
 
 /**
  * Payment summary screen — shows order summary and processes payment.
+ * Card number and CVC arrive via route params (not Redux) for PCI DSS compliance.
  */
 export function PaymentSummaryScreen({
   navigation,
+  route,
 }: PaymentSummaryScreenProps) {
   const dispatch = useDispatch<AppDispatch>();
   const checkout = useSelector((state: RootState) => state.checkout);
-  const cartItems = useSelector((state: RootState) => state.cart.items);
+  const cartItems = useSelector((state: RootState) => state.cart?.items ?? []);
   const products = useSelector((state: RootState) => state.products.items);
+
+  // Sensitive card data comes via route params, NOT from Redux (PCI DSS)
+  const routeCardNumber = route?.params?.cardNumber ?? '';
+  const routeCardExpiry = route?.params?.cardExpiry ?? '';
+  const routeCardCvc = route?.params?.cardCvc ?? '';
 
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getProduct = (productId: string) =>
-    products.find((p) => p.id === productId);
+  const getProduct = useCallback(
+    (productId: string) => products.find((p) => p.id === productId),
+    [products],
+  );
 
   const totalCents = cartItems.reduce((sum, item) => {
     const product = getProduct(item.productId);
@@ -55,55 +68,56 @@ export function PaymentSummaryScreen({
     setError(null);
 
     try {
-      const api = createApiClient(API_URL);
-      const firstItem = cartItems[0];
+      const api = getApiClientInstance();
 
-      if (!firstItem) {
+      if (cartItems.length === 0) {
         setError('Cart is empty');
         setProcessing(false);
         return;
       }
 
-      const product = getProduct(firstItem.productId);
-      if (!product) {
-        setError('Product not found');
-        setProcessing(false);
-        return;
-      }
+      // Card data from route params (Redux only has safe truncated data — PCI DSS)
+      const cardNumber = routeCardNumber;
+      const cardExpiry = routeCardExpiry;
+      const cardCvc = routeCardCvc;
+      const cardholderName = checkout.cardInfo?.cardholderName ?? '';
+      const cardLastFour = cardNumber.slice(-4);
 
       // Tokenize card
       const tokenResult = await api.tokenizeCard({
-        number: checkout.cardInfo?.number ?? '',
-        expiry: checkout.cardInfo?.expiry ?? '',
-        cvc: checkout.cardInfo?.cvc ?? '',
-        name: checkout.cardInfo?.cardholderName ?? '',
+        number: cardNumber,
+        expiry: cardExpiry,
+        cvc: cardCvc,
+        name: cardholderName,
       });
 
       const token = tokenResult.token;
       dispatch(setToken(token));
 
-      // Clear raw card info after tokenization
+      // Clear raw card info after tokenization — safe because we already captured values
       dispatch(clearCardInfo());
 
-      // Charge payment
+      // Charge payment — send ALL cart items
       const idempotencyKey = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const cardLastFour = (checkout.cardInfo?.number ?? '').slice(-4);
+      const chargeItems = cartItems.map((ci) => ({
+        productId: ci.productId,
+        quantity: ci.quantity,
+      }));
       const chargeResult = await api.chargePayment({
         token,
-        productId: firstItem.productId,
-        quantity: firstItem.quantity,
+        items: chargeItems,
         idempotencyKey,
         cardLastFour,
-        cardholderName: checkout.cardInfo?.cardholderName ?? '',
-        totalAmount: totalCents,
+        cardholderName,
       });
 
+      const rawTransaction = (chargeResult as { transaction: TransactionRecord }).transaction;
       const transaction: TransactionRecord = {
-        id: (chargeResult as { transaction: { id: string } }).transaction.id,
-        status: (chargeResult as { transaction: { status: string } }).transaction.status,
-        amount: totalCents,
-        productId: firstItem.productId,
-        quantity: firstItem.quantity,
+        id: rawTransaction.id,
+        status: rawTransaction.status,
+        amount: (chargeResult as { transaction: { totalAmount: number } }).transaction.totalAmount ?? totalCents,
+        productId: cartItems[0]!.productId,
+        quantity: cartItems[0]!.quantity,
         createdAt: new Date().toISOString(),
       };
 
@@ -124,14 +138,13 @@ export function PaymentSummaryScreen({
   }, [
     checkout,
     cartItems,
-    products,
     totalCents,
     dispatch,
     navigation,
     getProduct,
   ]);
 
-  const cardLastFour = (checkout.cardInfo?.number ?? '').slice(-4);
+  const cardLastFour = routeCardNumber.slice(-4) ?? checkout.cardInfo?.lastFour ?? '';
   const cardBrand = checkout.cardInfo?.brand ?? 'unknown';
 
   return (
@@ -190,15 +203,19 @@ export function PaymentSummaryScreen({
       )}
 
       {/* Pay button */}
-      <TouchableOpacity
-        style={[styles.payButton, processing && styles.disabledButton]}
+      <Pressable
+        style={({ pressed }) => [
+          styles.payButton,
+          processing && styles.disabledButton,
+          pressed && { opacity: 0.8 },
+        ]}
         onPress={handlePay}
         disabled={processing}
       >
         <Text style={styles.payButtonText}>
           {processing ? 'Processing...' : `Pay ${totalCents > 0 ? '$' + (totalCents / 100).toFixed(2) : ''}`}
         </Text>
-      </TouchableOpacity>
+      </Pressable>
     </ScrollView>
   );
 }

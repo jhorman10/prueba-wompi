@@ -86,12 +86,10 @@ describe('PaymentsController', () => {
 
       const result = await controller.charge({
         token: 'tok_abc',
-        productId: 'prod-1',
-        quantity: 2,
+        items: [{ productId: 'prod-1', quantity: 2 }],
         idempotencyKey: 'idemp-123',
         cardLastFour: '4242',
         cardholderName: 'John Doe',
-        totalAmount: 199998,
       });
 
       expect(result.transaction.status).toBe(TransactionStatus.COMPLETED);
@@ -106,12 +104,10 @@ describe('PaymentsController', () => {
       await expect(
         controller.charge({
           token: 'tok_abc',
-          productId: 'prod-1',
-          quantity: 3,
+          items: [{ productId: 'prod-1', quantity: 3 }],
           idempotencyKey: 'idemp-456',
           cardLastFour: '4242',
           cardholderName: 'John Doe',
-          totalAmount: 299997,
         }),
       ).rejects.toThrow(
         new HttpException(
@@ -125,12 +121,10 @@ describe('PaymentsController', () => {
       await expect(
         controller.charge({
           token: '',
-          productId: '',
-          quantity: 0,
+          items: [{ productId: '', quantity: 0 }],
           idempotencyKey: '',
           cardLastFour: '',
           cardholderName: '',
-          totalAmount: 0,
         }),
       ).rejects.toThrow(HttpException);
     });
@@ -149,12 +143,10 @@ describe('PaymentsController', () => {
 
       const result = await controller.charge({
         token: 'tok_dup',
-        productId: 'prod-1',
-        quantity: 1,
+        items: [{ productId: 'prod-1', quantity: 1 }],
         idempotencyKey: 'dup-key',
         cardLastFour: '4242',
         cardholderName: 'John',
-        totalAmount: 99999,
       });
 
       expect(result.isDuplicate).toBe(true);

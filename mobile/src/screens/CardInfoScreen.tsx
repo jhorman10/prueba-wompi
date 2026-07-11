@@ -3,7 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
+  Pressable,
   ScrollView,
   Image,
 } from 'react-native';
@@ -21,7 +21,7 @@ import {
 
 interface CardInfoScreenProps {
   navigation?: {
-    navigate: (screen: string) => void;
+    navigate: (screen: string, params?: object) => void;
   };
 }
 
@@ -52,9 +52,10 @@ export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
   const dispatch = useDispatch<AppDispatch>();
   const checkout = useSelector((state: RootState) => state.checkout);
 
-  const [number, setNumber] = useState(checkout.cardInfo?.number ?? '');
+  // PAN and CVV stay in local state ONLY — never persisted to Redux (PCI DSS)
+  const [number, setNumber] = useState('');
   const [expiry, setExpiry] = useState(checkout.cardInfo?.expiry ?? '');
-  const [cvc, setCvc] = useState(checkout.cardInfo?.cvc ?? '');
+  const [cvc, setCvc] = useState('');
   const [cardholderName, setCardholderName] = useState(
     checkout.cardInfo?.cardholderName ?? '',
   );
@@ -117,17 +118,22 @@ export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
   const handleContinue = () => {
     if (!validate()) return;
 
+    // Only store safe card info in Redux (no PAN, no CVV — PCI DSS)
     dispatch(
       setCardInfo({
-        number,
-        expiry,
-        cvc,
-        cardholderName,
+        lastFour: number.slice(-4),
         brand,
+        cardholderName,
+        expiry,
       }),
     );
     dispatch(advanceStep());
-    navigation?.navigate('PaymentSummary');
+    // Pass sensitive data (PAN, CVV) via route params — never via Redux
+    navigation?.navigate('PaymentSummary', {
+      cardNumber: number,
+      cardExpiry: expiry,
+      cardCvc: cvc,
+    });
   };
 
   const displayNumber = formatCardNumber(number);
@@ -195,9 +201,12 @@ export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
         error={errors.name}
       />
 
-      <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
+      <Pressable
+        style={({ pressed }) => [styles.continueButton, pressed && { opacity: 0.8 }]}
+        onPress={handleContinue}
+      >
         <Text style={styles.continueButtonText}>Continue</Text>
-      </TouchableOpacity>
+      </Pressable>
     </ScrollView>
   );
 }

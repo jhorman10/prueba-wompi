@@ -1,19 +1,17 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   FlatList,
   StyleSheet,
   ActivityIndicator,
-  TouchableOpacity,
+  Pressable,
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
 import { Product, setProducts, setLoading, setError } from '../store/slices/productsSlice';
 import { ProductCard } from '../components/ProductCard';
-import { createApiClient } from '../services/api';
-
-const API_URL = 'http://localhost:3000/api';
+import { getApiClientInstance } from '../services/api';
 
 interface HomeScreenProps {
   navigation?: {
@@ -29,7 +27,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   const { items: products, loading, error } = useSelector(
     (state: RootState) => state.products,
   );
-  const cartItems = useSelector((state: RootState) => state.cart.items);
+  const cartItems = useSelector((state: RootState) => state.cart?.items ?? []);
 
   useEffect(() => {
     fetchProducts();
@@ -39,7 +37,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   const fetchProducts = async () => {
     dispatch(setLoading(true));
     try {
-      const api = createApiClient(API_URL);
+      const api = getApiClientInstance();
       const data = await api.getProducts();
       dispatch(setProducts(data as Product[]));
     } catch (err) {
@@ -49,9 +47,16 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
     }
   };
 
-  const handleSelectProduct = (product: Product) => {
+  const handleSelectProduct = useCallback((product: Product) => {
     navigation?.navigate('SelectProduct', { product });
-  };
+  }, [navigation]);
+
+  const renderProductItem = useCallback(
+    ({ item }: { item: Product }) => (
+      <ProductCard product={item} onSelect={handleSelectProduct} />
+    ),
+    [handleSelectProduct],
+  );
 
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -67,17 +72,18 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
       ) : error ? (
         <View style={styles.center}>
           <Text style={styles.errorText}>Error: {error}</Text>
-          <TouchableOpacity onPress={fetchProducts} style={styles.retryButton}>
+          <Pressable
+            onPress={fetchProducts}
+            style={({ pressed }) => [styles.retryButton, pressed && { opacity: 0.8 }]}
+          >
             <Text style={styles.retryText}>Retry</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       ) : (
         <FlatList
           data={products}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <ProductCard product={item} onSelect={handleSelectProduct} />
-          )}
+          renderItem={renderProductItem}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <Text style={styles.emptyText}>No products available</Text>
@@ -86,14 +92,14 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
       )}
 
       {cartCount > 0 && (
-        <TouchableOpacity
-          style={styles.cartBar}
+        <Pressable
+          style={({ pressed }) => [styles.cartBar, pressed && { opacity: 0.8 }]}
           onPress={() => navigation?.navigate('Checkout')}
         >
           <Text style={styles.cartBarText}>
             View Cart ({cartCount} item{cartCount !== 1 ? 's' : ''})
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       )}
     </View>
   );
@@ -156,11 +162,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
-    shadowColor: '#6200ee',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    boxShadow: '0 4px 8px rgba(98,0,238,0.3)',
   },
   cartBarText: {
     color: '#fff',

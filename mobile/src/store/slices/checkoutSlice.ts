@@ -1,12 +1,12 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { CardBrand } from '../../services/cardDetection';
 
+/** Card info stored in Redux — NEVER store full PAN or CVV here (PCI DSS). */
 export interface CardInfo {
-  number: string;
-  expiry: string;
-  cvc: string;
-  cardholderName: string;
+  lastFour: string;
   brand: CardBrand;
+  cardholderName: string;
+  expiry: string; // only stored temporarily for re-display, cleared after tokenization
 }
 
 export interface CheckoutState {

@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useCallback } from 'react';
+import { View, Text, FlatList, StyleSheet, Pressable } from 'react-native';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store/store';
 import { CartItem } from '../components/CartItem';
@@ -19,31 +19,48 @@ interface CheckoutScreenProps {
  */
 export function CheckoutScreen({ navigation }: CheckoutScreenProps) {
   const dispatch = useDispatch<AppDispatch>();
-  const cartItems = useSelector((state: RootState) => state.cart.items);
+  const cartItems = useSelector((state: RootState) => state.cart?.items ?? []);
   const products = useSelector((state: RootState) => state.products.items);
 
-  const getProduct = (productId: string) =>
-    products.find((p) => p.id === productId);
+  const getProduct = useCallback(
+    (productId: string) => products.find((p) => p.id === productId),
+    [products],
+  );
 
   const totalCents = cartItems.reduce((sum, item) => {
     const product = getProduct(item.productId);
     return sum + (product?.price ?? 0) * item.quantity;
   }, 0);
 
-  const handleProceedToPayment = () => {
+  const handleProceedToPayment = useCallback(() => {
     navigation?.navigate('CardInfo');
-  };
+  }, [navigation]);
+
+  const renderCartItem = useCallback(
+    ({ item }: { item: (typeof cartItems)[number] }) => {
+      const product = getProduct(item.productId);
+      return (
+        <CartItem
+          productName={product?.name ?? 'Unknown Product'}
+          quantity={item.quantity}
+          unitPrice={product?.price ?? 0}
+          onRemove={() => dispatch(removeItem(item.productId))}
+        />
+      );
+    },
+    [getProduct, dispatch],
+  );
 
   if (cartItems.length === 0) {
     return (
       <View style={styles.center}>
         <Text style={styles.emptyText}>Your cart is empty</Text>
-        <TouchableOpacity
-          style={styles.shopButton}
+        <Pressable
+          style={({ pressed }) => [styles.shopButton, pressed && { opacity: 0.8 }]}
           onPress={() => navigation?.navigate('Home')}
         >
           <Text style={styles.shopButtonText}>Continue Shopping</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     );
   }
@@ -55,17 +72,7 @@ export function CheckoutScreen({ navigation }: CheckoutScreenProps) {
       <FlatList
         data={cartItems}
         keyExtractor={(item) => item.productId}
-        renderItem={({ item }) => {
-          const product = getProduct(item.productId);
-          return (
-            <CartItem
-              productName={product?.name ?? 'Unknown Product'}
-              quantity={item.quantity}
-              unitPrice={product?.price ?? 0}
-              onRemove={() => dispatch(removeItem(item.productId))}
-            />
-          );
-        }}
+        renderItem={renderCartItem}
         contentContainerStyle={styles.list}
       />
 
@@ -75,12 +82,12 @@ export function CheckoutScreen({ navigation }: CheckoutScreenProps) {
           <PriceTag cents={totalCents} style={styles.totalAmount} />
         </View>
 
-        <TouchableOpacity
-          style={styles.payButton}
+        <Pressable
+          style={({ pressed }) => [styles.payButton, pressed && { opacity: 0.8 }]}
           onPress={handleProceedToPayment}
         >
           <Text style={styles.payButtonText}>Pay with credit card</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </View>
   );

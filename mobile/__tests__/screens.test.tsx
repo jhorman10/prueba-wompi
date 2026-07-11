@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { Provider } from 'react-redux';
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, combineReducers } from '@reduxjs/toolkit';
 
 // Mocks for native modules
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -100,12 +100,12 @@ const mockProduct2 = {
 // Create mock store with REAL reducers so async dispatches actually update state
 const createMockStore = (overrides?: Record<string, unknown>) =>
   configureStore({
-    reducer: {
+    reducer: combineReducers({
       products: productsReducer,
       cart: cartReducer,
       checkout: checkoutReducer,
       transactions: transactionsReducer,
-    },
+    }),
     preloadedState: overrides as any,
   });
 
@@ -518,7 +518,11 @@ describe('Screen rendering', () => {
     fireEvent.changeText(nameInput, 'John Doe');
 
     fireEvent.press(getByText('Continue'));
-    expect(mockNavigate).toHaveBeenCalledWith('PaymentSummary');
+    expect(mockNavigate).toHaveBeenCalledWith('PaymentSummary', {
+      cardNumber: '4111111111111111',
+      cardExpiry: '12/30',
+      cardCvc: '123',
+    });
   });
 
   it('CardInfoScreen formats card number as user types', () => {
@@ -879,7 +883,15 @@ describe('Screen rendering', () => {
     expect(await findByText('Cart is empty')).toBeTruthy();
   });
 
-  it('PaymentSummaryScreen shows error when product not found', async () => {
+  it('PaymentSummaryScreen shows error when API client fails with product error', async () => {
+    const mockApiClient = {
+      getProducts: jest.fn(),
+      tokenizeCard: jest.fn().mockResolvedValue({ token: 'tok_test' }),
+      chargePayment: jest.fn().mockRejectedValue(new Error('Product not found')),
+      getTransactionStatus: jest.fn(),
+    };
+    (createApiClient as jest.Mock).mockReturnValue(mockApiClient);
+
     const store = createMockStore({
       cart: { items: [{ productId: 'unknown_product', quantity: 1 }] },
       products: { items: [], loading: false, error: null },
@@ -903,7 +915,6 @@ describe('Screen rendering', () => {
       </Provider>,
     );
 
-    // With unknown product, totalCents = 0, button shows "Pay " (with trailing space)
     const payButton = getByText('Pay ');
     fireEvent.press(payButton);
     expect(await findByText('Product not found')).toBeTruthy();

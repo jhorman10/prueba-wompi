@@ -15,7 +15,11 @@ export type RootStackParamList = {
   SelectProduct: { product: import('../store/slices/productsSlice').Product };
   Checkout: undefined;
   CardInfo: undefined;
-  PaymentSummary: undefined;
+  PaymentSummary: {
+    cardNumber: string;
+    cardExpiry: string;
+    cardCvc: string;
+  } | undefined;
   TransactionStatus: { transaction: { id: string; status: string; amount: number } };
 };
 

@@ -84,6 +84,6 @@ describe('getBrandLogo', () => {
 
   it('returns null for unknown brand', () => {
     expect(getBrandLogo('unknown')).toBeNull();
-    expect(getBrandLogo('amex')).toBeNull();
+    expect(getBrandLogo('amex' as any)).toBeNull();
   });
 });

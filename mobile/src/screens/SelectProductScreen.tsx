@@ -3,7 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
+  Pressable,
   Image,
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
@@ -69,35 +69,36 @@ export function SelectProductScreen({
       <PriceTag cents={product.price} style={styles.price} />
 
       <View style={styles.quantityRow}>
-        <TouchableOpacity
-          style={styles.qtyButton}
+        <Pressable
+          style={({ pressed }) => [styles.qtyButton, pressed && { opacity: 0.8 }]}
           onPress={() => setQuantity(Math.max(1, quantity - 1))}
         >
           <Text style={styles.qtyButtonText}>-</Text>
-        </TouchableOpacity>
+        </Pressable>
         <Text style={styles.quantity}>{quantity}</Text>
-        <TouchableOpacity
-          style={styles.qtyButton}
+        <Pressable
+          style={({ pressed }) => [styles.qtyButton, pressed && { opacity: 0.8 }]}
           onPress={() => setQuantity(Math.min(product.stock, quantity + 1))}
         >
           <Text style={styles.qtyButtonText}>+</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       <Text style={styles.total}>
         Total: ${((product.price * quantity) / 100).toFixed(2)}
       </Text>
 
-      <TouchableOpacity
-        style={[
+      <Pressable
+        style={({ pressed }) => [
           styles.addButton,
           quantity > product.stock && styles.disabledButton,
+          pressed && { opacity: 0.8 },
         ]}
         onPress={handleAddToCart}
         disabled={quantity > product.stock}
       >
         <Text style={styles.addButtonText}>Add to Cart</Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }

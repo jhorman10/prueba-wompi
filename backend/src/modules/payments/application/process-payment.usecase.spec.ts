@@ -31,6 +31,7 @@ describe('ProcessPaymentUseCase', () => {
       findAll: jest.fn(),
       findById: jest.fn(),
       updateStock: jest.fn(),
+      atomicDecrementStock: jest.fn().mockResolvedValue(true),
       save: jest.fn(),
     };
 
@@ -38,12 +39,10 @@ describe('ProcessPaymentUseCase', () => {
 
     defaultInput = {
       token: 'tok_test_abc',
-      productId: 'prod-1',
-      quantity: 2,
+      items: [{ productId: 'prod-1', quantity: 2 }],
       idempotencyKey: 'idemp-abc-123',
       cardLastFour: '4242',
       cardholderName: 'John Doe',
-      totalAmount: 199998,
     };
   });
 
@@ -86,7 +85,7 @@ describe('ProcessPaymentUseCase', () => {
       'tx-1',
       expect.objectContaining({ status: TransactionStatus.COMPLETED }),
     );
-    expect(mockProductRepo.updateStock).toHaveBeenCalledWith('prod-1', 8);
+    expect(mockProductRepo.atomicDecrementStock).toHaveBeenCalledWith('prod-1', 2);
     expect(mockGateway.charge).toHaveBeenCalledWith('tok_test_abc', 199998, 'idemp-abc-123');
   });
 
@@ -118,7 +117,7 @@ describe('ProcessPaymentUseCase', () => {
 
     await expect(useCase.execute({
       ...defaultInput,
-      quantity: 3,
+      items: [{ productId: 'prod-1', quantity: 3 }],
     })).rejects.toThrow(InsufficientStockError);
 
     expect(mockGateway.charge).not.toHaveBeenCalled();
@@ -148,7 +147,7 @@ describe('ProcessPaymentUseCase', () => {
       errorMessage: 'Insufficient funds',
     });
 
-    const result = await useCase.execute({ ...defaultInput, quantity: 1, totalAmount: 99999 });
+    const result = await useCase.execute({ ...defaultInput, items: [{ productId: 'prod-1', quantity: 1 }] });
 
     expect(result.transaction.status).toBe(TransactionStatus.FAILED);
     expect(result.transaction.gatewayErrorCode).toBe('insufficient_funds');
@@ -173,7 +172,7 @@ describe('ProcessPaymentUseCase', () => {
     mockTxRepo.update.mockResolvedValue(createdTx);
     mockGateway.charge.mockRejectedValue(new Error('Gateway timeout'));
 
-    const result = await useCase.execute({ ...defaultInput, quantity: 1, totalAmount: 99999 });
+    const result = await useCase.execute({ ...defaultInput, items: [{ productId: 'prod-1', quantity: 1 }] });
 
     expect(result.transaction.status).toBe(TransactionStatus.RETRIES_EXHAUSTED);
     expect(result.transaction.gatewayErrorCode).toBe('network_error');
@@ -209,7 +208,7 @@ describe('ProcessPaymentUseCase', () => {
       status: 'APPROVED',
     });
 
-    await useCase.execute({ ...defaultInput, quantity: 1, totalAmount: 99999 });
+    await useCase.execute({ ...defaultInput, items: [{ productId: 'prod-1', quantity: 1 }] });
 
     // Verify PROCESSING was set before charge call
     const processingCall = mockTxRepo.update.mock.calls.find(

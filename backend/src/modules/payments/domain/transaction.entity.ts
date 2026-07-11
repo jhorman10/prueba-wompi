@@ -27,11 +27,15 @@ export class TransactionEntity {
   @Column({ type: 'varchar', length: 255, nullable: true })
   idempotencyKey: string | null = null;
 
-  @Column({ type: 'varchar', length: 255 })
-  productId: string;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  productId: string | null = null;
 
-  @Column({ type: 'int' })
-  quantity: number;
+  @Column({ type: 'int', nullable: true })
+  quantity: number | null = null;
+
+  /** JSON array of { productId, quantity, unitPrice, productName } */
+  @Column({ type: 'text', nullable: true })
+  items: string | null = null;
 
   @Column({ type: 'int' })
   totalAmount: number;
