@@ -12,6 +12,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
 import { setCardInfo, advanceStep } from '../store/slices/checkoutSlice';
 import { CardInput } from '../components/CardInput';
+import { Backdrop } from '../components/Backdrop';
 import {
   detectBrand,
   isValidLuhn,
@@ -23,6 +24,7 @@ import {
 interface CardInfoScreenProps {
   navigation?: {
     navigate: (screen: string, params?: object) => void;
+    goBack?: () => void;
   };
 }
 
@@ -62,6 +64,11 @@ export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
   );
   const [errors, setErrors] = useState<CardFormErrors>({});
   const [submitting, setSubmitting] = useState(false);
+
+  const handleClose = useCallback(() => {
+    if (navigation?.goBack) navigation.goBack();
+    else navigation?.navigate('Checkout');
+  }, [navigation]);
 
   const brand: CardBrand = number ? detectBrand(number) : 'unknown';
   const brandName = getBrandName(brand);
@@ -148,14 +155,13 @@ export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
   const displayNumber = formatCardNumber(number);
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
-      <Text style={styles.heading}>Credit Card Info</Text>
-
-      {/* Card number with brand logo */}
+    <Backdrop visible title="Credit Card Info" onClose={handleClose}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Card number with brand logo */}
       <View style={styles.cardNumberRow}>
         <View style={styles.cardNumberInput}>
           <CardInput
@@ -219,7 +225,8 @@ export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
           <Text style={styles.continueButtonText}>Continue</Text>
         )}
       </Pressable>
-    </ScrollView>
+      </ScrollView>
+    </Backdrop>
   );
 }
 
@@ -231,12 +238,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 40,
-  },
-  heading: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginBottom: 24,
   },
   cardNumberRow: {
     flexDirection: 'row',
