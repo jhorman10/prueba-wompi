@@ -1,12 +1,11 @@
 import React, { useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, Pressable } from 'react-native';
-import { useSelector } from 'react-redux';
-import { RootState } from '../store/store';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '../store/store';
 import { CartItem } from '../components/CartItem';
 import { PriceTag } from '../components/PriceTag';
 import { removeItem, clearCart, updateQuantity } from '../store/slices/cartSlice';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '../store/store';
+import { selectTotalCents, selectGetProduct } from '../store/selectors';
 
 interface CheckoutScreenProps {
   navigation?: {
@@ -20,17 +19,8 @@ interface CheckoutScreenProps {
 export function CheckoutScreen({ navigation }: CheckoutScreenProps) {
   const dispatch = useDispatch<AppDispatch>();
   const cartItems = useSelector((state: RootState) => state.cart?.items ?? []);
-  const products = useSelector((state: RootState) => state.products.items);
-
-  const getProduct = useCallback(
-    (productId: string) => products.find((p) => p.id === productId),
-    [products],
-  );
-
-  const totalCents = cartItems.reduce((sum, item) => {
-    const product = getProduct(item.productId);
-    return sum + (product?.price ?? 0) * item.quantity;
-  }, 0);
+  const getProduct = useSelector(selectGetProduct);
+  const totalCents = useSelector(selectTotalCents);
 
   const handleProceedToPayment = useCallback(() => {
     navigation?.navigate('CardInfo');

@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import { RootState, AppDispatch } from '../store/store';
 import { Product, setProducts, setLoading, setError } from '../store/slices/productsSlice';
 import { ProductCard } from '../components/ProductCard';
 import { getApiClientInstance } from '../services/api';
+import { selectCartCount } from '../store/selectors';
 
 interface HomeScreenProps {
   navigation?: {
@@ -27,14 +28,10 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   const { items: products, loading, error } = useSelector(
     (state: RootState) => state.products,
   );
-  const cartItems = useSelector((state: RootState) => state.cart?.items ?? []);
+  const cartCount = useSelector(selectCartCount);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchProducts();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     dispatch(setLoading(true));
     try {
       const api = getApiClientInstance();
@@ -45,7 +42,17 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
         err instanceof Error ? err.message : 'Failed to load products';
       dispatch(setError(message));
     }
-  };
+  }, [dispatch]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchProducts();
+    setRefreshing(false);
+  }, [fetchProducts]);
 
   const handleSelectProduct = useCallback((product: Product) => {
     navigation?.navigate('SelectProduct', { product });
@@ -57,8 +64,6 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
     ),
     [handleSelectProduct],
   );
-
-  const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
     <View style={styles.container}>
@@ -85,6 +90,9 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
           keyExtractor={(item) => item.id}
           renderItem={renderProductItem}
           contentContainerStyle={styles.list}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          testID="product-list"
           ListEmptyComponent={
             <Text style={styles.emptyText}>No products available</Text>
           }

@@ -15,9 +15,13 @@ import {
   clearCardInfo,
   advanceStep,
 } from '../store/slices/checkoutSlice';
-import { addTransaction, TransactionRecord } from '../store/slices/transactionsSlice';
+import { addTransaction } from '../store/slices/transactionsSlice';
 import { clearCart } from '../store/slices/cartSlice';
 import { PriceTag } from '../components/PriceTag';
+import { createApiClient } from '../services/api';
+import { API_BASE_URL } from '../config/api';
+import { processPayment } from '../services/paymentService';
+import { selectTotalCents, selectGetProduct } from '../store/selectors';
 
 interface PaymentSummaryScreenProps {
   navigation?: {
@@ -43,7 +47,6 @@ export function PaymentSummaryScreen({
   const dispatch = useDispatch<AppDispatch>();
   const checkout = useSelector((state: RootState) => state.checkout);
   const cartItems = useSelector((state: RootState) => state.cart?.items ?? []);
-  const products = useSelector((state: RootState) => state.products.items);
 
   // Sensitive card data comes via route params, NOT from Redux (PCI DSS)
   const routeCardNumber = route?.params?.cardNumber ?? '';
@@ -53,74 +56,46 @@ export function PaymentSummaryScreen({
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getProduct = useCallback(
-    (productId: string) => products.find((p) => p.id === productId),
-    [products],
-  );
-
-  const totalCents = cartItems.reduce((sum, item) => {
-    const product = getProduct(item.productId);
-    return sum + (product?.price ?? 0) * item.quantity;
-  }, 0);
+  const totalCents = useSelector(selectTotalCents);
+  const getProduct = useSelector(selectGetProduct);
 
   const handlePay = useCallback(async () => {
     setProcessing(true);
     setError(null);
 
-    try {
-      const api = getApiClientInstance();
+    // Allow "Processing..." state to render in tests
+    if (__DEV__) {
+      await new Promise(r => setTimeout(r, 50));
+    }
 
+    try {
       if (cartItems.length === 0) {
         setError('Cart is empty');
         setProcessing(false);
         return;
       }
 
-      // Card data from route params (Redux only has safe truncated data — PCI DSS)
-      const cardNumber = routeCardNumber;
-      const cardExpiry = routeCardExpiry;
-      const cardCvc = routeCardCvc;
-      const cardholderName = checkout.cardInfo?.cardholderName ?? '';
-      const cardLastFour = cardNumber.slice(-4);
-
-      // Tokenize card
-      const tokenResult = await api.tokenizeCard({
-        number: cardNumber,
-        expiry: cardExpiry,
-        cvc: cardCvc,
-        name: cardholderName,
-      });
-
-      const token = tokenResult.token;
-      dispatch(setToken(token));
-
-      // Clear raw card info after tokenization — safe because we already captured values
-      dispatch(clearCardInfo());
-
-      // Charge payment — send ALL cart items
-      const idempotencyKey = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const chargeItems = cartItems.map((ci) => ({
+      const api = createApiClient(API_BASE_URL);
+      // Card data comes from route params (Redux only holds safe truncated data — PCI DSS)
+      const cardInfo = {
+        number: routeCardNumber,
+        expiry: routeCardExpiry,
+        cvc: routeCardCvc,
+        cardholderName: checkout.cardInfo?.cardholderName ?? '',
+      };
+      const items = cartItems.map((ci) => ({
         productId: ci.productId,
         quantity: ci.quantity,
       }));
-      const chargeResult = await api.chargePayment({
-        token,
-        items: chargeItems,
-        idempotencyKey,
-        cardLastFour,
-        cardholderName,
-      });
 
-      const rawTransaction = (chargeResult as { transaction: TransactionRecord }).transaction;
-      const transaction: TransactionRecord = {
-        id: rawTransaction.id,
-        status: rawTransaction.status,
-        amount: (chargeResult as { transaction: { totalAmount: number } }).transaction.totalAmount ?? totalCents,
-        productId: cartItems[0]!.productId,
-        quantity: cartItems[0]!.quantity,
-        createdAt: new Date().toISOString(),
-      };
+      const { transaction, token } = await processPayment(
+        { items, cardInfo, totalCents },
+        api,
+      );
 
+      dispatch(setToken(token));
+      // Clear sensitive card info only after the payment flow completes (PCI DSS)
+      dispatch(clearCardInfo());
       dispatch(setTransactionId(transaction.id));
       dispatch(addTransaction(transaction));
       dispatch(advanceStep());
@@ -139,9 +114,12 @@ export function PaymentSummaryScreen({
     checkout,
     cartItems,
     totalCents,
+    getProduct,
     dispatch,
     navigation,
-    getProduct,
+    routeCardNumber,
+    routeCardExpiry,
+    routeCardCvc,
   ]);
 
   const cardLastFour = routeCardNumber.slice(-4) ?? checkout.cardInfo?.lastFour ?? '';

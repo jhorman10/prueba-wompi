@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { Provider } from 'react-redux';
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
 
@@ -18,10 +18,17 @@ jest.mock('react-native-encrypted-storage', () => ({
   clear: jest.fn(() => Promise.resolve()),
 }));
 
-// Mock the API module so screens using API don't make real HTTP calls
-jest.mock('../src/services/api', () => ({
-  createApiClient: jest.fn(),
-}));
+// Mock the API module so screens using API don't make real HTTP calls.
+// HomeScreen uses the singleton client via getApiClientInstance(); delegate it
+// to createApiClient so the existing per-test mockReturnValue setups apply
+// unchanged (keeps the shared mock DRY rather than duplicating the stub).
+jest.mock('../src/services/api', () => {
+  const createApiClient = jest.fn();
+  return {
+    createApiClient,
+    getApiClientInstance: jest.fn().mockImplementation(() => createApiClient()),
+  };
+});
 
 const mockNavigate = jest.fn();
 const mockGoBack = jest.fn();
@@ -288,6 +295,35 @@ describe('Screen rendering', () => {
     expect(await findByText('Retry')).toBeTruthy();
   });
 
+  it('HomeScreen refreshes products on pull-to-refresh', async () => {
+    const mockApiClient = {
+      getProducts: jest.fn().mockResolvedValue([mockProduct1]),
+      tokenizeCard: jest.fn(),
+      chargePayment: jest.fn(),
+      getTransactionStatus: jest.fn(),
+    };
+    (createApiClient as jest.Mock).mockReturnValue(mockApiClient);
+
+    const store = createMockStore({
+      products: { items: [], loading: false, error: null },
+      cart: { items: [] },
+    });
+    const { HomeScreen } = require('../src/screens/HomeScreen');
+    const { getByTestId, findByText } = render(
+      <Provider store={store}>
+        <HomeScreen navigation={{ navigate: mockNavigate }} />
+      </Provider>,
+    );
+    // Wait for the initial load
+    expect(await findByText('Test Widget')).toBeTruthy();
+    const list = getByTestId('product-list');
+    await act(async () => {
+      (list.props as { onRefresh?: () => void }).onRefresh?.();
+    });
+    // Initial fetch (useEffect) + pull-to-refresh = 2 calls
+    expect(mockApiClient.getProducts).toHaveBeenCalledTimes(2);
+  });
+
   // ===================== CheckoutScreen =====================
   it('CheckoutScreen renders empty cart state', () => {
     const store = createMockStore({
@@ -379,6 +415,21 @@ describe('Screen rendering', () => {
     expect(queryByText('Your cart is empty')).toBeNull();
   });
 
+  it('CheckoutScreen renders a cart line for a missing product', () => {
+    const store = createMockStore({
+      cart: { items: [{ productId: 'ghost', quantity: 1 }] },
+      products: { items: [mockProduct1], loading: false, error: null },
+    });
+    const { CheckoutScreen } = require('../src/screens/CheckoutScreen');
+    const { getByText } = render(
+      <Provider store={store}>
+        <CheckoutScreen navigation={{ navigate: mockNavigate }} />
+      </Provider>,
+    );
+    expect(getByText('Unknown Product')).toBeTruthy();
+    expect(getByText('Qty: 1')).toBeTruthy();
+  });
+
   // ===================== CardInfoScreen =====================
   it('CardInfoScreen renders all input fields', () => {
     const store = createMockStore({
@@ -431,7 +482,7 @@ describe('Screen rendering', () => {
     );
     const input = getByPlaceholderText('0000 0000 0000 0000');
     fireEvent.changeText(input, '4111111111111111');
-    expect(getByText('VISA')).toBeTruthy();
+    expect(getByText('Visa')).toBeTruthy();
   });
 
   it('CardInfoScreen shows brand logo for MasterCard', () => {
@@ -446,7 +497,24 @@ describe('Screen rendering', () => {
     );
     const input = getByPlaceholderText('0000 0000 0000 0000');
     fireEvent.changeText(input, '5511111111111111');
-    expect(getByText('MC')).toBeTruthy();
+    expect(getByText('Mastercard')).toBeTruthy();
+  });
+
+  it('CardInfoScreen shows no brand badge for an unknown brand', () => {
+    const store = createMockStore({
+      checkout: { step: 0, cardInfo: undefined },
+    });
+    const { CardInfoScreen } = require('../src/screens/CardInfoScreen');
+    const { getByPlaceholderText, queryByText } = render(
+      <Provider store={store}>
+        <CardInfoScreen navigation={{ navigate: mockNavigate }} />
+      </Provider>,
+    );
+    const input = getByPlaceholderText('0000 0000 0000 0000');
+    // '6011111111111117' is not Visa/Mastercard -> unknown -> empty name
+    fireEvent.changeText(input, '6011111111111117');
+    expect(queryByText('Visa')).toBeNull();
+    expect(queryByText('Mastercard')).toBeNull();
   });
 
   it('CardInfoScreen shows invalid card error for non-Luhn number', () => {
@@ -497,7 +565,53 @@ describe('Screen rendering', () => {
     expect(getByText('Enter valid expiry')).toBeTruthy();
   });
 
-  it('CardInfoScreen allows valid card to proceed', () => {
+  it('CardInfoScreen shows invalid month for month > 12', () => {
+    const store = createMockStore({
+      checkout: { step: 0, cardInfo: undefined },
+    });
+    const { CardInfoScreen } = require('../src/screens/CardInfoScreen');
+    const { getByPlaceholderText, getByText } = render(
+      <Provider store={store}>
+        <CardInfoScreen navigation={{ navigate: mockNavigate }} />
+      </Provider>,
+    );
+    const cardInput = getByPlaceholderText('0000 0000 0000 0000');
+    fireEvent.changeText(cardInput, '4111111111111111');
+    const expiryInput = getByPlaceholderText('MM/YY');
+    fireEvent.changeText(expiryInput, '1330');
+    const cvcInput = getByPlaceholderText('123');
+    fireEvent.changeText(cvcInput, '123');
+    const nameInput = getByPlaceholderText('John Doe');
+    fireEvent.changeText(nameInput, 'John Doe');
+
+    fireEvent.press(getByText('Continue'));
+    expect(getByText('Invalid month')).toBeTruthy();
+  });
+
+  it('CardInfoScreen shows invalid month for month < 1', () => {
+    const store = createMockStore({
+      checkout: { step: 0, cardInfo: undefined },
+    });
+    const { CardInfoScreen } = require('../src/screens/CardInfoScreen');
+    const { getByPlaceholderText, getByText } = render(
+      <Provider store={store}>
+        <CardInfoScreen navigation={{ navigate: mockNavigate }} />
+      </Provider>,
+    );
+    const cardInput = getByPlaceholderText('0000 0000 0000 0000');
+    fireEvent.changeText(cardInput, '4111111111111111');
+    const expiryInput = getByPlaceholderText('MM/YY');
+    fireEvent.changeText(expiryInput, '0030');
+    const cvcInput = getByPlaceholderText('123');
+    fireEvent.changeText(cvcInput, '123');
+    const nameInput = getByPlaceholderText('John Doe');
+    fireEvent.changeText(nameInput, 'John Doe');
+
+    fireEvent.press(getByText('Continue'));
+    expect(getByText('Invalid month')).toBeTruthy();
+  });
+
+  it('CardInfoScreen allows valid card to proceed', async () => {
     const store = createMockStore({
       checkout: { step: 0, cardInfo: undefined },
     });
@@ -518,11 +632,43 @@ describe('Screen rendering', () => {
     fireEvent.changeText(nameInput, 'John Doe');
 
     fireEvent.press(getByText('Continue'));
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith('PaymentSummary', {
+        cardNumber: '4111111111111111',
+        cardExpiry: '12/30',
+        cardCvc: '123',
+      }),
+    );
+  });
+
+  it('CardInfoScreen shows loading spinner while submitting', async () => {
+    jest.useFakeTimers();
+    const store = createMockStore({
+      checkout: { step: 0, cardInfo: undefined },
+    });
+    const { CardInfoScreen } = require('../src/screens/CardInfoScreen');
+    const { getByPlaceholderText, getByText, getByTestId, queryByText } = render(
+      <Provider store={store}>
+        <CardInfoScreen navigation={{ navigate: mockNavigate }} />
+      </Provider>,
+    );
+    fireEvent.changeText(getByPlaceholderText('0000 0000 0000 0000'), '4111111111111111');
+    fireEvent.changeText(getByPlaceholderText('MM/YY'), '1230');
+    fireEvent.changeText(getByPlaceholderText('123'), '123');
+    fireEvent.changeText(getByPlaceholderText('John Doe'), 'John Doe');
+    fireEvent.press(getByText('Continue'));
+    // With fake timers the submit timer has not fired, so the spinner stays visible
+    expect(getByTestId('continue-spinner')).toBeTruthy();
+    expect(queryByText('Continue')).toBeNull();
+    await act(async () => {
+      jest.advanceTimersByTime(0);
+    });
     expect(mockNavigate).toHaveBeenCalledWith('PaymentSummary', {
       cardNumber: '4111111111111111',
       cardExpiry: '12/30',
       cardCvc: '123',
     });
+    jest.useRealTimers();
   });
 
   it('CardInfoScreen formats card number as user types', () => {
@@ -554,6 +700,28 @@ describe('Screen rendering', () => {
     fireEvent.changeText(expiryInput, '0120');
     const cardInput = getByPlaceholderText('0000 0000 0000 0000');
     fireEvent.changeText(cardInput, '4111111111111111');
+    const cvcInput = getByPlaceholderText('123');
+    fireEvent.changeText(cvcInput, '123');
+    const nameInput = getByPlaceholderText('John Doe');
+    fireEvent.changeText(nameInput, 'John Doe');
+    fireEvent.press(getByText('Continue'));
+    expect(getByText('Card expired')).toBeTruthy();
+  });
+
+  it('CardInfoScreen shows expired card error for a past month in the current year', () => {
+    const store = createMockStore({
+      checkout: { step: 0, cardInfo: undefined },
+    });
+    const { CardInfoScreen } = require('../src/screens/CardInfoScreen');
+    const { getByPlaceholderText, getByText } = render(
+      <Provider store={store}>
+        <CardInfoScreen navigation={{ navigate: mockNavigate }} />
+      </Provider>,
+    );
+    const cardInput = getByPlaceholderText('0000 0000 0000 0000');
+    fireEvent.changeText(cardInput, '4111111111111111');
+    const expiryInput = getByPlaceholderText('MM/YY');
+    fireEvent.changeText(expiryInput, '0126');
     const cvcInput = getByPlaceholderText('123');
     fireEvent.changeText(cvcInput, '123');
     const nameInput = getByPlaceholderText('John Doe');
@@ -675,7 +843,7 @@ describe('Screen rendering', () => {
     expect(getByText('2')).toBeTruthy();
   });
 
-  it('SelectProductScreen add to cart dispatches and navigates home', () => {
+  it('SelectProductScreen add to cart dispatches and navigates home', async () => {
     const store = createMockStore({
       cart: { items: [] },
       products: { items: [mockProduct1], loading: false, error: null },
@@ -690,7 +858,33 @@ describe('Screen rendering', () => {
       </Provider>,
     );
     fireEvent.press(getByText('Add to Cart'));
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('Home'));
+  });
+
+  it('SelectProductScreen shows loading spinner while adding to cart', async () => {
+    jest.useFakeTimers();
+    const store = createMockStore({
+      cart: { items: [] },
+      products: { items: [mockProduct1], loading: false, error: null },
+    });
+    const { SelectProductScreen } = require('../src/screens/SelectProductScreen');
+    const { getByText, getByTestId, queryByText } = render(
+      <Provider store={store}>
+        <SelectProductScreen
+          navigation={{ navigate: mockNavigate }}
+          route={{ params: { product: mockProduct1 } }}
+        />
+      </Provider>,
+    );
+    fireEvent.press(getByText('Add to Cart'));
+    // With fake timers the loading timer has not fired, so the spinner stays visible
+    expect(getByTestId('add-to-cart-spinner')).toBeTruthy();
+    expect(queryByText('Add to Cart')).toBeNull();
+    await act(async () => {
+      jest.advanceTimersByTime(0);
+    });
     expect(mockNavigate).toHaveBeenCalledWith('Home');
+    jest.useRealTimers();
   });
 
   it('SelectProductScreen shows total price reflecting quantity', () => {
