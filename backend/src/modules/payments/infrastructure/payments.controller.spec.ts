@@ -58,6 +58,45 @@ describe('PaymentsController', () => {
       });
     });
 
+    it('should return a server-generated idempotencyKey (A5)', async () => {
+      mockTokenizeUseCase.execute.mockResolvedValue({
+        token: 'tok_abc123',
+        cardLastFour: '4242',
+      });
+
+      const result = await controller.tokenize({
+        number: '4242424242424242',
+        expiry: '12/28',
+        cvc: '123',
+        name: 'John Doe',
+      });
+
+      expect(typeof result.idempotencyKey).toBe('string');
+      expect(result.idempotencyKey.length).toBeGreaterThan(0);
+    });
+
+    it('should generate a unique idempotencyKey per tokenize call (A5)', async () => {
+      mockTokenizeUseCase.execute.mockResolvedValue({
+        token: 'tok_abc123',
+        cardLastFour: '4242',
+      });
+
+      const first = await controller.tokenize({
+        number: '4242424242424242',
+        expiry: '12/28',
+        cvc: '123',
+        name: 'John Doe',
+      });
+      const second = await controller.tokenize({
+        number: '4242424242424242',
+        expiry: '12/28',
+        cvc: '123',
+        name: 'John Doe',
+      });
+
+      expect(first.idempotencyKey).not.toBe(second.idempotencyKey);
+    });
+
     it('should throw 400 when missing required fields', async () => {
       await expect(
         controller.tokenize({ number: '', expiry: '12/28', cvc: '123', name: 'John' }),

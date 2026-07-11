@@ -1,4 +1,5 @@
 import { Controller, Post, Get, Param, Body, HttpCode, HttpException, HttpStatus } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { TokenizeCardUseCase } from '../application/tokenize-card.usecase';
 import { ProcessPaymentUseCase, InsufficientStockError } from '../application/process-payment.usecase';
 import { ITransactionRepository, TRANSACTION_REPOSITORY } from '../domain/transaction.repository';
@@ -27,7 +28,7 @@ export class PaymentsController {
       cardholderName: body.name,
     });
 
-    return { token: result.token };
+    return { token: result.token, idempotencyKey: randomUUID() };
   }
 
   @Post('charge')

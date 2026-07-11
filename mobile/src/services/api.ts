@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { getApiClient } from './apiClient';
 
 export interface CardTokenizeRequest {
@@ -22,7 +23,7 @@ export interface ChargeRequest {
 
 export interface ApiClient {
   getProducts: () => Promise<unknown>;
-  tokenizeCard: (details: CardTokenizeRequest) => Promise<{ token: string }>;
+  tokenizeCard: (details: CardTokenizeRequest) => Promise<{ token: string; idempotencyKey: string }>;
   chargePayment: (data: ChargeRequest) => Promise<unknown>;
   getTransactionStatus: (id: string) => Promise<unknown>;
 }
@@ -42,7 +43,7 @@ export function getApiClientInstance(): ApiClient {
 
     tokenizeCard: async (
       details: CardTokenizeRequest,
-    ): Promise<{ token: string }> => {
+    ): Promise<{ token: string; idempotencyKey: string }> => {
       const { data } = await client.post('/payments/tokenize', details);
       return data;
     },
@@ -82,8 +83,7 @@ export function createApiClient(baseURL: string): ApiClient {
 
   // Use the singleton but with overridden baseURL (creates new instance if needed)
   // Note: This bypasses the singleton pattern. Prefer getApiClientInstance().
-  const { axios: axiosLib } = require('axios');
-  const client = axiosLib.create({
+  const client = axios.create({
     baseURL,
     timeout: 15000,
     headers: { 'Content-Type': 'application/json' },
@@ -94,7 +94,7 @@ export function createApiClient(baseURL: string): ApiClient {
       const { data } = await client.get('/products');
       return data;
     },
-    tokenizeCard: async (details: CardTokenizeRequest): Promise<{ token: string }> => {
+    tokenizeCard: async (details: CardTokenizeRequest): Promise<{ token: string; idempotencyKey: string }> => {
       const { data } = await client.post('/payments/tokenize', details);
       return data;
     },
