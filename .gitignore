@@ -13,6 +13,7 @@ mobile/android/build/
 mobile/android/local.properties
 mobile/android/captures/
 *.apk
+!mobile/release/app-debug.apk
 *.aab
 *.hprof
 
