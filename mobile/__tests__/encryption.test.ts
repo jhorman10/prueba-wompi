@@ -130,5 +130,27 @@ describe('encryption transformer', () => {
       expect(EncryptedStorage.getItem).not.toHaveBeenCalled();
       expect(result).toEqual(state);
     });
+
+    it('strips Immer internals from the rehydrated (out) state', async () => {
+      const stored = {
+        cart: { _y: 1, _z: 2, items: [{ productId: 'p1', quantity: 1 }] },
+      };
+      const encoded = btoa(JSON.stringify(stored));
+      (EncryptedStorage.getItem as jest.Mock).mockResolvedValueOnce(encoded);
+
+      const result = await encryptor.out({}, 'cart', {});
+      expect(EncryptedStorage.getItem).toHaveBeenCalledWith('persist:cart');
+      expect(result).toEqual({ cart: { items: [{ productId: 'p1', quantity: 1 }] } });
+    });
+  });
+
+  describe('data at rest', () => {
+    it('stores the slice in a non-plaintext (base64) form', async () => {
+      const state = { cart: { items: [{ productId: '1', quantity: 2 }] } };
+      await encryptor.in(state, 'cart', {});
+      const encoded = (EncryptedStorage.setItem as jest.Mock).mock.calls[0][1];
+      expect(encoded).not.toContain('productId');
+      expect(typeof encoded).toBe('string');
+    });
   });
 });

@@ -2,7 +2,6 @@ import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import {
   persistStore,
   persistReducer,
-  createTransform,
   FLUSH,
   REHYDRATE,
   PAUSE,
@@ -17,39 +16,16 @@ import cartReducer from './slices/cartSlice';
 import checkoutReducer from './slices/checkoutSlice';
 import transactionsReducer from './slices/transactionsSlice';
 
+// Single combined transform: encryption + Immer cleanup happen together so the
+// async encryptor and the (formerly separate) sync Immer fix cannot race.
 const encryptor = createEncryptor();
-
-/** Strips Immer internals (_y, _z, _A) from persisted slices */
-function stripImmer(state: Record<string, unknown>) {
-  if (!state || typeof state !== 'object') return state;
-  const r: Record<string, unknown> = {};
-  for (const key of Object.keys(state)) {
-    if (!key.startsWith('_')) {
-      r[key] = (state as any)[key];
-    }
-  }
-  return r;
-}
-
-const immerFix = createTransform(
-  (inboundState: any) => inboundState,
-  (outboundState: any, key: string | number) => {
-    if (!outboundState || typeof outboundState !== 'object') return outboundState;
-    const cleaned = stripImmer(outboundState);
-    // Ensure expected arrays exist
-    if (!Array.isArray(cleaned.items)) cleaned.items = [];
-    if (key === 'transactions' && !Array.isArray(cleaned.history)) cleaned.history = [];
-    return cleaned;
-  },
-  { whitelist: ['cart', 'checkout', 'transactions'] },
-);
 
 const persistConfig = {
   key: 'root',
   version: 3,
   storage: AsyncStorage,
   whitelist: ['cart', 'checkout', 'transactions'],
-  transforms: [encryptor as any, immerFix],
+  transforms: [encryptor as any],
 };
 
 const rootReducer = combineReducers({
