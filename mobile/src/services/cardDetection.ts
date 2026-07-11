@@ -51,15 +51,16 @@ export function formatCardNumber(value: string): string {
   return groups.join(' ');
 }
 
-const KNOWN_BRANDS: Record<CardBrand, string | null> = {
-  visa: 'visa-logo',
-  mastercard: 'mastercard-logo',
-  unknown: null,
+const BRAND_DISPLAY_NAMES: Record<CardBrand, string> = {
+  visa: 'Visa',
+  mastercard: 'Mastercard',
+  unknown: '',
 };
 
 /**
- * Get brand logo identifier for known brands.
+ * Get the human-readable display name for a detected card brand.
+ * 'unknown' resolves to an empty string so callers can conditionally render.
  */
-export function getBrandLogo(brand: CardBrand): string | null {
-  return KNOWN_BRANDS[brand] ?? null;
+export function getBrandName(brand: CardBrand): string {
+  return BRAND_DISPLAY_NAMES[brand];
 }

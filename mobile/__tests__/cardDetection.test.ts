@@ -2,7 +2,7 @@ import {
   detectBrand,
   isValidLuhn,
   formatCardNumber,
-  getBrandLogo,
+  getBrandName,
 } from '../src/services/cardDetection';
 
 describe('detectBrand', () => {
@@ -73,17 +73,16 @@ describe('formatCardNumber', () => {
   });
 });
 
-describe('getBrandLogo', () => {
-  it('returns the correct logo identifier for visa', () => {
-    expect(getBrandLogo('visa')).toBe('visa-logo');
+describe('getBrandName', () => {
+  it('returns the display name for visa', () => {
+    expect(getBrandName('visa')).toBe('Visa');
   });
 
-  it('returns the correct logo identifier for mastercard', () => {
-    expect(getBrandLogo('mastercard')).toBe('mastercard-logo');
+  it('returns the display name for mastercard', () => {
+    expect(getBrandName('mastercard')).toBe('Mastercard');
   });
 
-  it('returns null for unknown brand', () => {
-    expect(getBrandLogo('unknown')).toBeNull();
-    expect(getBrandLogo('amex' as any)).toBeNull();
+  it('returns an empty string for unknown brand', () => {
+    expect(getBrandName('unknown')).toBe('');
   });
 });
