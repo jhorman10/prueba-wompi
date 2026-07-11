@@ -1,17 +1,14 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { loadEnvConfig } from './config/env.config';
+import { buildCorsOptions } from './config/cors.config';
 
 async function bootstrap() {
   const config = loadEnvConfig();
 
   const app = await NestFactory.create(AppModule);
 
-  app.enableCors({
-    origin: '*',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    allowedHeaders: 'Content-Type,Authorization',
-  });
+  app.enableCors(buildCorsOptions());
 
   app.setGlobalPrefix('api');
 
