@@ -5,11 +5,12 @@ import { TRANSACTION_REPOSITORY } from './domain/transaction.repository';
 import { PAYMENT_GATEWAY } from './domain/payment-gateway.interface';
 import { TransactionTypeOrmRepository } from './infrastructure/transaction.repository';
 import { SandboxPaymentGateway } from './infrastructure/sandbox-payment-gateway';
+import { WompiPaymentGateway } from './infrastructure/wompi-payment-gateway';
 import { PaymentsController } from './infrastructure/payments.controller';
 import { TokenizeCardUseCase } from './application/tokenize-card.usecase';
 import { ProcessPaymentUseCase } from './application/process-payment.usecase';
 import { ProductsModule } from '../products/products.module';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -27,7 +28,14 @@ import { ConfigModule } from '@nestjs/config';
     },
     {
       provide: PAYMENT_GATEWAY,
-      useClass: SandboxPaymentGateway,
+      useFactory: (configService: ConfigService) => {
+        const mode = configService.get<string>('GATEWAY_MODE');
+        if (mode === 'live') {
+          return new WompiPaymentGateway(configService);
+        }
+        return new SandboxPaymentGateway(configService);
+      },
+      inject: [ConfigService],
     },
   ],
   exports: [TRANSACTION_REPOSITORY, PAYMENT_GATEWAY],
