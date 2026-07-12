@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store/store';
 import { PriceTag } from '../components/PriceTag';
@@ -49,7 +49,7 @@ export function TransactionStatusScreen({
   const isSuccess = transaction.status === 'COMPLETED';
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.heading}>Transaction Status</Text>
 
       <View style={[styles.statusBadge, isSuccess ? styles.successBadge : styles.failureBadge]}>
@@ -90,7 +90,7 @@ export function TransactionStatusScreen({
       >
         <Text style={styles.homeButtonText}>Back to Home</Text>
       </Pressable>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -99,6 +99,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
     padding: 16,
+  },
+  content: {
+    paddingBottom: 32,
   },
   center: {
     flex: 1,

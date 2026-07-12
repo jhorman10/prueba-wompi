@@ -40,8 +40,8 @@ A monorepo credit card payment checkout system built with React Native (mobile) 
 
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
-| Mobile Framework | React Native 0.73.4 | Cross-platform mobile app |
-| State Management | Redux Toolkit + redux-persist | Global state + encrypted persistence |
+| Mobile Framework | React Native 0.86.0 | Cross-platform mobile app |
+| State Management | Redux Toolkit 2 + redux-persist | Global state + encrypted persistence |
 | Navigation | React Navigation 6 (native-stack) | 7-screen flow |
 | Encryption | react-native-encrypted-storage | Secure card/transaction data at rest |
 | Backend Framework | Nest.js 10 (TypeScript) | REST API |
@@ -114,9 +114,9 @@ The backend starts on `http://localhost:3000` with SQLite in-memory database. Se
 ```bash
 cd mobile
 npm ci
-cp ../.env.example .env
-# Or create mobile/.env with:
-# API_URL=http://localhost:3000/api
+cp .env.example .env   # creates mobile/.env with API_URL
+# The backend URL is read from API_URL in mobile/.env (injected at build time
+# by react-native-dotenv). Edit it for physical devices (use your LAN IP).
 npx react-native start
 ```
 
@@ -126,7 +126,9 @@ cd mobile
 npx react-native run-android  # or npx react-native run-ios
 ```
 
-> **Note**: The mobile app expects the backend to be running at `API_URL`. Update `mobile/.env` if running on a physical device (use your machine's IP instead of `localhost`).
+> **Note**: The mobile app reads its backend URL from `API_URL` in `mobile/.env`
+> (env-driven via `react-native-dotenv`). Update it for physical devices (use your
+> machine's LAN IP instead of `localhost`).
 
 ### Docker (Backend Only)
 
@@ -248,42 +250,64 @@ All endpoints are prefixed with `/api`.
 
 ## Testing
 
-### Backend Tests (80 unit tests)
+All suites run green: **backend — 106 tests across 14 suites** and **mobile — 152 tests across 17 suites**.
+
+### Backend Tests (106 unit tests)
 
 ```bash
 cd backend
-npx jest --coverage
+npm run test:cov
 ```
 
-**Coverage:**
+**Coverage (measured 2026-07-11):**
 | Metric | % | Threshold |
 |--------|---|-----------|
-| Statements | 95.63% | ≥80% |
-| Branches | 80.32% | ≥80% |
-| Functions | 97.36% | ≥80% |
-| Lines | 96.42% | ≥80% |
+| Statements | 99.62% | ≥80% |
+| Branches | 94.93% | ≥80% |
+| Functions | 97.72% | ≥80% |
+| Lines | 99.56% | ≥80% |
 
-### Mobile Tests (120 unit tests)
+### Mobile Tests (152 unit tests)
 
 ```bash
 cd mobile
 npx jest --coverage
 ```
 
-**Coverage:**
+**Coverage (measured 2026-07-11):**
 | Metric | % | Threshold |
 |--------|---|-----------|
-| Statements | 98.71% | ≥80% |
-| Branches | 90.18% | ≥80% |
-| Functions | 96.73% | ≥80% |
-| Lines | 98.95% | ≥80% |
+| Statements | 95.33% | ≥80% |
+| Branches | 81.66% | ≥80% |
+| Functions | 93.02% | ≥80% |
+| Lines | 95.46% | ≥80% |
 
 ### Total Coverage Summary
 
 | Layer | Suites | Tests | Statements | Branches | Functions | Lines |
 |-------|--------|-------|------------|----------|-----------|--------|
-| Backend | 13 | 80 | 95.63% | 80.32% | 97.36% | 96.42% |
-| Mobile | 13 | 120 | 98.71% | 90.18% | 96.73% | 98.95% |
+| Backend | 14 | 106 | 99.62% | 94.93% | 97.72% | 99.56% |
+| Mobile | 17 | 152 | 95.33% | 81.66% | 93.02% | 95.46% |
+
+## APK (Android build)
+
+A debug Android build is committed in-repo at `mobile/release/app-debug.apk` (~151 MB) so the
+artifact is available per the coding-test brief (this environment has no Android SDK, so the
+APK could not be rebuilt from source here).
+
+- **What it is:** the `assembleDebug` output of the React Native Android app (a debug APK).
+- **How to regenerate:** on a machine with the Android SDK installed and `ANDROID_HOME` set, run:
+  ```bash
+  cd mobile/android && ./gradlew assembleDebug
+  ```
+  The output lands at `mobile/android/app/build/outputs/apk/debug/app-debug.apk`.
+- **Honesty note — stale baseline:** the committed APK reflects the **encrypted-persistence +
+  audit-fix baseline**. It does **not** yet include the latest UI work (Backdrop component,
+  payment-error Toast, and the env-driven backend URL). To ship those changes, rebuild on a
+  machine with the Android SDK using the command above; do not treat this APK as current.
+- **Encrypted persistence:** persisted state (cart, checkout, transactions slices) uses
+  `react-native-encrypted-storage` via `redux-persist` — OS-backed Keychain/Keystore
+  encryption, not plaintext. Raw card numbers are never persisted.
 
 ## Development
 
@@ -294,7 +318,7 @@ npx jest --coverage
 - **Client-side validation**: Luhn checksum, brand detection (Visa/MasterCard), expiry date validation run on-device before any API call.
 - **Idempotency**: Payment submissions use idempotency keys to prevent duplicate charges. Duplicate requests return the existing transaction without calling the gateway.
 - **Retry with backoff**: Gateway network failures trigger up to 3 retries with exponential backoff (1s, 2s, 4s).
-- **Encrypted persistence**: `redux-persist` + `react-native-encrypted-storage` for cart, checkout, and transaction slices. Raw card numbers never stored after tokenization.
+- **Encrypted persistence**: `redux-persist` uses `react-native-encrypted-storage` (an OS-backed encrypted store — Keychain/Keystore) as its storage engine for the cart, checkout, and transactions slices. This is real device-level encryption, **not** base64 obfuscation or a plaintext-safe copy. Raw card numbers are never persisted — only tokenized data is stored.
 
 ### Architecture Patterns
 
@@ -317,16 +341,40 @@ npx jest --coverage
 
 | Variable | Description |
 |----------|-------------|
-| `API_URL` | Backend API base URL (e.g., `http://localhost:3000/api`) |
+| `API_URL` | Backend API base URL (e.g., `http://localhost:3000/api`) — injected at build time by `react-native-dotenv` |
+
+#### Sandbox / Payment Gateway setup
+
+The backend talks to the payment gateway **only** through the `IPaymentGateway`
+interface and environment configuration. The gateway's brand name appears
+**nowhere in the source code** — it lives solely in your gitignored `backend/.env`.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GATEWAY_URL` | `https://sandbox-gateway.example.com` | Gateway base URL |
+| `GATEWAY_API_KEY` | `sandbox-key` | Gateway API key (sent as `Authorization: Bearer`) |
+| `GATEWAY_MODE` | `simulate` | `simulate` → canned local responses (no network); `live` → real HTTP calls |
+
+To use the **real sandbox** instead of the built-in simulator:
+
+1. Set `GATEWAY_URL` to the sandbox base URL (e.g. `https://sandbox.example-payments.com`).
+2. Set `GATEWAY_API_KEY` to your sandbox API key.
+3. Set `GATEWAY_MODE=live`.
+
+> Note: the sandbox URL is a real third-party endpoint and is intentionally kept
+> out of the repository. The codebase contains **no literal "Wompi"** (or other
+> gateway brand) string — only the abstracted `IPaymentGateway` interface and the
+> environment variables listed above.
 
 ## Pull Requests (Feature Branch Chain)
 
-This project was developed across 3 chained PRs:
+This project was developed across a chain of PRs:
 
 | PR | Branch | Scope |
 |----|--------|-------|
 | [PR 1](https://github.com/jhormanorozco/Prueba-Wompi/pull/1) | `feat/backend-core` | Nest.js backend: products + payments modules, hexagonal architecture |
 | [PR 2](https://github.com/jhormanorozco/Prueba-Wompi/pull/2) | `feat/mobile-core` | React Native: 7 screens, Redux, navigation, card validation |
 | [PR 3](https://github.com/jhormanorozco/Prueba-Wompi/pull/3) | `feat/integration-polish` | Integration: API wiring, Dockerfile, .env examples, README, test verification |
+| [PR 7](https://github.com/jhormanorozco/Prueba-Wompi/pull/7) | `feat/audit-fix-implementation` | Applies audit-fix findings: honest README/test numbers, env-driven mobile URL, payment-error toast, responsive hardening |
 
-Branch chain: `main` ← `dev` (tracker) ← `feat/backend-core` ← `feat/mobile-core` ← `feat/integration-polish`
+Branch chain: `main` ← `dev` (tracker) ← `feat/backend-core` ← `feat/mobile-core` ← `feat/integration-polish` ← `feat/audit-fix-implementation`

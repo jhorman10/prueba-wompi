@@ -227,4 +227,55 @@ describe('ProcessPaymentUseCase', () => {
     expect(processingCallIndex).toBeGreaterThanOrEqual(0);
     expect(mockGateway.charge).toHaveBeenCalled();
   });
+
+  it('should throw when items array is empty', async () => {
+    mockTxRepo.findByIdempotencyKey.mockResolvedValue(null);
+
+    await expect(useCase.execute({ ...defaultInput, items: [] })).rejects.toThrow(
+      'At least one item is required',
+    );
+    expect(mockProductRepo.findById).not.toHaveBeenCalled();
+    expect(mockGateway.charge).not.toHaveBeenCalled();
+  });
+
+  it('should throw when items is missing', async () => {
+    mockTxRepo.findByIdempotencyKey.mockResolvedValue(null);
+
+    await expect(
+      useCase.execute({ ...defaultInput, items: null as any }),
+    ).rejects.toThrow('At least one item is required');
+  });
+
+  it('should mark FAILED and throw when atomic stock decrement fails', async () => {
+    const product = Object.assign(new ProductEntity(), {
+      id: 'prod-1', name: 'Laptop', stock: 10, price: 99999,
+    });
+    const createdTx = Object.assign(new TransactionEntity(), {
+      id: 'tx-stock',
+      status: TransactionStatus.PENDING,
+      productId: 'prod-1',
+      quantity: 1,
+      totalAmount: 99999,
+    });
+
+    mockProductRepo.findById.mockResolvedValue(product);
+    mockTxRepo.findByIdempotencyKey.mockResolvedValue(null);
+    mockTxRepo.create.mockResolvedValue(createdTx);
+    mockTxRepo.update.mockResolvedValue(createdTx);
+    mockGateway.charge.mockResolvedValue({
+      success: true,
+      gatewayReference: 'ref-ok',
+      status: 'APPROVED',
+    });
+    mockProductRepo.atomicDecrementStock.mockResolvedValue(false);
+
+    await expect(
+      useCase.execute({ ...defaultInput, items: [{ productId: 'prod-1', quantity: 1 }] }),
+    ).rejects.toThrow(InsufficientStockError);
+
+    expect(mockTxRepo.update).toHaveBeenCalledWith(
+      'tx-stock',
+      expect.objectContaining({ status: TransactionStatus.FAILED, gatewayErrorCode: 'stock_conflict' }),
+    );
+  });
 });

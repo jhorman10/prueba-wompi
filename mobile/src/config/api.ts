@@ -1,48 +1,66 @@
 import { Platform } from 'react-native';
+import { API_URL } from '@env';
 
 /**
  * API base URL configuration.
  *
- * Android emulator: uses 127.0.0.1 with `adb reverse tcp:3000 tcp:3000`
- *   (run this once per emulator session to forward the port).
- * iOS simulator: can use localhost directly.
- * Physical devices: should use the machine's LAN IP.
+ * The backend URL is supplied via environment (`mobile/.env`, injected at build
+ * time by react-native-dotenv as `API_URL`). This keeps the gateway/host out of
+ * source control and lets physical devices point at the machine's LAN IP.
  *
- * Protocol: HTTP in dev (localhost/127.0.0.1), HTTPS in production.
- * Controlled by EXPO_PUBLIC_API_PROTOCOL env var (defaults to http in dev).
+ * When `API_URL` is not set (e.g. a missing .env during local dev), we fall back
+ * to a platform-appropriate localhost address so the simulator/emulator still
+ * works without any configuration.
+ *
+ * Dev host notes:
+ *  - Android emulator: 127.0.0.1 (with `adb reverse tcp:3000 tcp:3000`)
+ *  - iOS simulator: localhost
+ *  - Physical devices: set API_URL to http://<LAN_IP>:3000/api
  */
-const API_HOST = Platform.select({
-  android: '127.0.0.1',
-  ios: 'localhost',
-  default: 'localhost',
-});
 
-const API_PORT = 3000;
+const DEFAULT_PORT = 3000;
 
-// Allow overriding protocol via env. In dev on localhost, HTTP is fine.
-// In production, MUST be https.
-const API_PROTOCOL = process.env.EXPO_PUBLIC_API_PROTOCOL ?? (__DEV__ ? 'http' : 'https');
+function isLocalhost(hostname: string): boolean {
+  return (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname.startsWith('192.168.') ||
+    hostname.startsWith('10.') ||
+    hostname.startsWith('172.16.')
+  );
+}
+
+function buildDefaultBaseUrl(): string {
+  const host = Platform.select({
+    android: '127.0.0.1',
+    ios: 'localhost',
+    default: 'localhost',
+  });
+  const protocol = __DEV__ ? 'http' : 'https';
+  return `${protocol}://${host}:${DEFAULT_PORT}/api`;
+}
 
 /**
- * Validates that sensitive data (card info) is not sent over HTTP to non-local hosts.
+ * Warns (dev only) when sensitive card data would be sent over HTTP to a
+ * non-localhost host — a PCI DSS smell. No-op in production builds.
  */
-function assertSecureConnection(): void {
-  if (__DEV__ && API_PROTOCOL === 'http') {
-    const isLocalhost =
-      API_HOST === 'localhost' ||
-      API_HOST === '127.0.0.1' ||
-      API_HOST?.startsWith('192.168.') ||
-      API_HOST?.startsWith('10.') ||
-      API_HOST?.startsWith('172.16.');
-    if (!isLocalhost) {
+function assertSecureConnection(baseUrl: string): void {
+  if (!__DEV__) {
+    return;
+  }
+  try {
+    const { hostname, protocol } = new URL(baseUrl);
+    if (protocol === 'http:' && !isLocalhost(hostname)) {
       console.warn(
         '[PCI WARNING] Sending sensitive data over HTTP to non-localhost host! ' +
-          'Set EXPO_PUBLIC_API_PROTOCOL=https for production.',
+          'Set API_URL to an https endpoint for production.',
       );
     }
+  } catch {
+    // Non-URL fallback value; ignore in dev.
   }
 }
 
-assertSecureConnection();
+export const API_BASE_URL: string = API_URL || buildDefaultBaseUrl();
 
-export const API_BASE_URL = `${API_PROTOCOL}://${API_HOST}:${API_PORT}/api`;
+assertSecureConnection(API_BASE_URL);

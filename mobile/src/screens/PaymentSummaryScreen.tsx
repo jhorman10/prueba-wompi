@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Pressable,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
@@ -18,6 +17,8 @@ import {
 import { addTransaction } from '../store/slices/transactionsSlice';
 import { clearCart } from '../store/slices/cartSlice';
 import { PriceTag } from '../components/PriceTag';
+import { Backdrop } from '../components/Backdrop';
+import { Toast } from '../components/Toast';
 import { createApiClient } from '../services/api';
 import { API_BASE_URL } from '../config/api';
 import { processPayment } from '../services/paymentService';
@@ -26,6 +27,7 @@ import { selectTotalCents, selectGetProduct } from '../store/selectors';
 interface PaymentSummaryScreenProps {
   navigation?: {
     navigate: (screen: string, params?: object) => void;
+    goBack?: () => void;
   };
   route?: {
     params: {
@@ -54,14 +56,21 @@ export function PaymentSummaryScreen({
   const routeCardCvc = route?.params?.cardCvc ?? '';
 
   const [processing, setProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const handleClose = useCallback(() => {
+    if (navigation?.goBack) navigation.goBack();
+    else navigation?.navigate('CardInfo');
+  }, [navigation]);
+
+  const dismissToast = useCallback(() => setToastMessage(null), []);
 
   const totalCents = useSelector(selectTotalCents);
   const getProduct = useSelector(selectGetProduct);
 
   const handlePay = useCallback(async () => {
     setProcessing(true);
-    setError(null);
+    setToastMessage(null);
 
     // Allow "Processing..." state to render in tests
     if (__DEV__) {
@@ -70,7 +79,7 @@ export function PaymentSummaryScreen({
 
     try {
       if (cartItems.length === 0) {
-        setError('Cart is empty');
+        setToastMessage('Cart is empty');
         setProcessing(false);
         return;
       }
@@ -105,8 +114,7 @@ export function PaymentSummaryScreen({
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Payment failed. Please try again.';
-      setError(message);
-      Alert.alert('Payment Error', message);
+      setToastMessage(message);
     } finally {
       setProcessing(false);
     }
@@ -126,13 +134,12 @@ export function PaymentSummaryScreen({
   const cardBrand = checkout.cardInfo?.brand ?? 'unknown';
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-    >
-      <Text style={styles.heading}>Payment Summary</Text>
-
-      {/* Order items */}
+    <Backdrop visible title="Payment Summary" onClose={handleClose}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+      >
+        {/* Order items */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Items</Text>
         {cartItems.map((item) => {
@@ -173,13 +180,6 @@ export function PaymentSummaryScreen({
         <PriceTag cents={totalCents} style={styles.totalAmount} />
       </View>
 
-      {/* Error */}
-      {error && (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      )}
-
       {/* Pay button */}
       <Pressable
         style={({ pressed }) => [
@@ -193,8 +193,10 @@ export function PaymentSummaryScreen({
         <Text style={styles.payButtonText}>
           {processing ? 'Processing...' : `Pay ${totalCents > 0 ? '$' + (totalCents / 100).toFixed(2) : ''}`}
         </Text>
-      </Pressable>
-    </ScrollView>
+        </Pressable>
+      </ScrollView>
+      <Toast message={toastMessage} onDismiss={dismissToast} />
+    </Backdrop>
   );
 }
 
@@ -206,12 +208,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 40,
-  },
-  heading: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginBottom: 24,
   },
   section: {
     marginBottom: 20,
@@ -260,16 +256,6 @@ const styles = StyleSheet.create({
   },
   totalAmount: {
     fontSize: 22,
-  },
-  errorBox: {
-    backgroundColor: '#fef2f2',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#e53935',
   },
   payButton: {
     backgroundColor: '#6200ee',
