@@ -10,7 +10,10 @@ export function SplashScreen() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      navigation.navigate('Home');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      });
     }, 2000);
     return () => clearTimeout(timer);
   }, [navigation]);

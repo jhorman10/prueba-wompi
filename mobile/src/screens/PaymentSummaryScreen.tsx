@@ -69,6 +69,7 @@ export function PaymentSummaryScreen({
   const getProduct = useSelector(selectGetProduct);
 
   const handlePay = useCallback(async () => {
+    console.log('[Pay] clicked, cartItems:', cartItems.length, 'totalCents:', totalCents, 'routeCardNumber:', routeCardNumber ? routeCardNumber.slice(-4) : 'empty');
     setProcessing(true);
     setToastMessage(null);
 
@@ -112,6 +113,7 @@ export function PaymentSummaryScreen({
 
       navigation?.navigate('TransactionStatus', { transaction });
     } catch (err) {
+      console.error('[Pay] error:', err);
       const message =
         err instanceof Error ? err.message : 'Payment failed. Please try again.';
       setToastMessage(message);

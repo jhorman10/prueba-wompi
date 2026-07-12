@@ -44,6 +44,7 @@ const createMockStore = () =>
   });
 
 const mockNavigate = jest.fn();
+const mockReset = jest.fn();
 
 jest.mock('@react-navigation/native', () => ({
   NavigationContainer: ({ children }: { children: React.ReactNode }) => (
@@ -52,6 +53,7 @@ jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({
     navigate: mockNavigate,
     goBack: jest.fn(),
+    reset: mockReset,
   }),
   useRoute: () => ({ params: {} }),
 }));
@@ -98,8 +100,11 @@ describe('App and Navigation', () => {
     );
     // The SplashScreen renders the app title
     expect(getByText('Payment Checkout')).toBeTruthy();
-    // After 2s, navigates to Home
+    // After 2s, resets to Home (so back closes the app)
     jest.advanceTimersByTime(2000);
-    expect(mockNavigate).toHaveBeenCalledWith('Home');
+    expect(mockReset).toHaveBeenCalledWith({
+      index: 0,
+      routes: [{ name: 'Home' }],
+    });
   });
 });

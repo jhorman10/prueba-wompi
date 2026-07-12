@@ -69,12 +69,12 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
     <View style={styles.container}>
       <Text style={styles.heading}>Products</Text>
 
-      {loading ? (
+      {loading && products.length === 0 ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#6200ee" />
           <Text style={styles.loadingText}>Loading products...</Text>
         </View>
-      ) : error ? (
+      ) : error && products.length === 0 ? (
         <View style={styles.center}>
           <Text style={styles.errorText}>Error: {error}</Text>
           <Pressable
