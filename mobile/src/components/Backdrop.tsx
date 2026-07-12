@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Animated, Platform } from 'react-native';
 
 export interface BackdropProps {
   /** Controls whether the scrim + panel are shown. When false, nothing is rendered. */
@@ -31,7 +31,7 @@ export function Backdrop({ visible, onClose, children, title }: BackdropProps) {
     Animated.timing(slide, {
       toValue: 1,
       duration: 220,
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start();
   }, [visible, slide]);
 
@@ -96,6 +96,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 0,
   },
   panel: {
     width: '100%',
@@ -106,6 +107,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     paddingBottom: 24,
+    zIndex: 1,
+    elevation: Platform.OS === 'android' ? 10 : undefined,
   },
   header: {
     flexDirection: 'row',
