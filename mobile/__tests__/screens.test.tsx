@@ -32,11 +32,13 @@ jest.mock('../src/services/api', () => {
 
 const mockNavigate = jest.fn();
 const mockGoBack = jest.fn();
+const mockReset = jest.fn();
 
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({
     navigate: mockNavigate,
     goBack: mockGoBack,
+    reset: mockReset,
   }),
   useRoute: () => ({ params: {} }),
 }));
@@ -143,7 +145,10 @@ describe('Screen rendering', () => {
 
     jest.advanceTimersByTime(2000);
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('Home');
+      expect(mockReset).toHaveBeenCalledWith({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      });
     });
     jest.useRealTimers();
   });
