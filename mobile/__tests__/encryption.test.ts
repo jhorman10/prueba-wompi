@@ -25,9 +25,17 @@ describe('persistence encryption', () => {
     jest.clearAllMocks();
   });
 
-  it('uses EncryptedStorage (not AsyncStorage) as the redux-persist storage engine', () => {
-    expect(persistConfig.storage).toBe(EncryptedStorage);
-    expect(persistConfig.storage).not.toBe(AsyncStorage);
+  it('uses EncryptedStorage (not AsyncStorage) as the redux-persist storage engine', async () => {
+    const storage = persistConfig.storage;
+    expect(storage).toBeDefined();
+    expect(storage).not.toBe(AsyncStorage);
+    // The defensive adapter delegates every call to the encrypted backend.
+    await storage.getItem('root');
+    await storage.setItem('root', 'v');
+    await storage.removeItem('root');
+    expect(EncryptedStorage.getItem).toHaveBeenCalledWith('root');
+    expect(EncryptedStorage.setItem).toHaveBeenCalledWith('root', 'v');
+    expect(EncryptedStorage.removeItem).toHaveBeenCalledWith('root');
   });
 
   it('only persists the encrypted slices (cart, checkout, transactions)', () => {
@@ -130,11 +138,24 @@ describe('persistence encryption', () => {
 
   describe('data at rest', () => {
     it('relies on the EncryptedStorage backend so persisted data is never plaintext AsyncStorage', () => {
-      // The transform performs no storage writes, and the persist engine is
-      // EncryptedStorage — therefore redux-persist writes the encrypted blob
-      // to the OS-backed secure store, never to AsyncStorage in plaintext.
-      expect(persistConfig.storage).toBe(EncryptedStorage);
-      expect(persistConfig.transforms).toHaveLength(1);
+      // The transform performs no storage writes, and the persist engine is a
+      // defensive adapter over EncryptedStorage — therefore redux-persist writes
+      // the encrypted blob to the OS-backed secure store, never to AsyncStorage
+      // in plaintext.
+      const storage = persistConfig.storage;
+      expect(storage).toBeDefined();
+      return (async () => {
+        await storage.getItem('root');
+        await storage.setItem('root', 'v');
+        await storage.removeItem('root');
+        expect(EncryptedStorage.getItem).toHaveBeenCalled();
+        expect(EncryptedStorage.setItem).toHaveBeenCalled();
+        expect(EncryptedStorage.removeItem).toHaveBeenCalled();
+        expect(AsyncStorage.getItem).not.toHaveBeenCalled();
+        expect(AsyncStorage.setItem).not.toHaveBeenCalled();
+        expect(AsyncStorage.removeItem).not.toHaveBeenCalled();
+        expect(persistConfig.transforms).toHaveLength(1);
+      })();
     });
   });
 });
