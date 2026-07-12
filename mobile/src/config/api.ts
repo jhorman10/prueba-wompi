@@ -13,7 +13,7 @@ import { API_URL } from '@env';
  * works without any configuration.
  *
  * Dev host notes:
- *  - Android emulator: 127.0.0.1 (with `adb reverse tcp:3000 tcp:3000`)
+ *  - Android emulator: 10.0.2.2 (special alias for host machine)
  *  - iOS simulator: localhost
  *  - Physical devices: set API_URL to http://<LAN_IP>:3000/api
  */
@@ -32,7 +32,7 @@ function isLocalhost(hostname: string): boolean {
 
 function buildDefaultBaseUrl(): string {
   const host = Platform.select({
-    android: '127.0.0.1',
+    android: '10.0.2.2',
     ios: 'localhost',
     default: 'localhost',
   });

@@ -91,11 +91,9 @@ export class WompiPaymentGateway implements IPaymentGateway {
         body: JSON.stringify({
           number: details.number,
           cvc: details.cvc,
-          exp_month,
-          exp_year,
-          card_holder: {
-            name: details.cardholderName,
-          },
+          exp_month: String(exp_month),
+          exp_year: String(exp_year),
+          card_holder: details.cardholderName,
         }),
       });
 
@@ -104,6 +102,7 @@ export class WompiPaymentGateway implements IPaymentGateway {
         throw new WompiHttpError(
           errorBody?.error?.message ||
             errorBody?.message ||
+            (errorBody?.error?.type ? `Wompi validation error: ${errorBody.error.type}` : undefined) ||
             `Wompi tokenize failed: ${response.status}`,
           response.status,
         );
@@ -302,9 +301,9 @@ export class WompiPaymentGateway implements IPaymentGateway {
   } {
     const [month, year] = expiry.split('/');
     const exp_month = parseInt(month, 10);
-    const shortYear = parseInt(year, 10);
-    const exp_year = shortYear < 100 ? 2000 + shortYear : shortYear;
-    return { exp_month, exp_year };
+    const exp_year = parseInt(year, 10);
+    // Wompi expects 2-digit year (e.g. "30" for 2030)
+    return { exp_month, exp_year: exp_year > 100 ? exp_year % 100 : exp_year };
   }
 
   private generateSignature(
@@ -312,7 +311,8 @@ export class WompiPaymentGateway implements IPaymentGateway {
     amount: number,
     currency: string,
   ): string {
-    const raw = `${this.integrityKey}${reference}${amount}${currency}`;
+    // Wompi signature format: <Reference><Amount><Currency><IntegritySecret>
+    const raw = `${reference}${amount}${currency}${this.integrityKey}`;
     return crypto.createHash('sha256').update(raw).digest('hex');
   }
 

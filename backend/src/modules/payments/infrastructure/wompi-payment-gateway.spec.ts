@@ -91,9 +91,9 @@ describe('WompiPaymentGateway', () => {
       expect(JSON.parse(options.body)).toMatchObject({
         number: '4242424242424242',
         cvc: '123',
-        exp_month: 12,
-        exp_year: 2028,
-        card_holder: { name: 'John Doe' },
+        exp_month: '12',
+        exp_year: '28',
+        card_holder: 'John Doe',
       });
     });
 
@@ -115,8 +115,8 @@ describe('WompiPaymentGateway', () => {
       });
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(body.exp_month).toBe(6);
-      expect(body.exp_year).toBe(2026);
+      expect(body.exp_month).toBe('6');
+      expect(body.exp_year).toBe('26');
     });
 
     it('should parse single-digit month in expiry', async () => {
@@ -137,8 +137,8 @@ describe('WompiPaymentGateway', () => {
       });
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(body.exp_month).toBe(3);
-      expect(body.exp_year).toBe(2030);
+      expect(body.exp_month).toBe('3');
+      expect(body.exp_year).toBe('30');
     });
 
     it('should throw error when Wompi returns non-201 status (no retry on 4xx)', async () => {
@@ -162,7 +162,7 @@ describe('WompiPaymentGateway', () => {
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
-    it('should use default error message when error body has no message', async () => {
+    it('should use error type when error body has no message', async () => {
       const mockFetch = jest.fn().mockResolvedValue(
         errorResponse(422, { error: { type: 'validation_error' } }),
       );
@@ -176,7 +176,7 @@ describe('WompiPaymentGateway', () => {
           cvc: '123',
           cardholderName: 'John Doe',
         }),
-      ).rejects.toThrow('Wompi tokenize failed: 422');
+      ).rejects.toThrow('Wompi validation error: validation_error');
     });
 
     it('should use fallback message when json parse fails on error', async () => {
@@ -409,9 +409,9 @@ describe('WompiPaymentGateway', () => {
       await gateway.charge('tok_test', 99999, 'ORDER-123');
 
       const createBody = JSON.parse(mockFetch.mock.calls[1][1].body);
-      // SHA256 of "stagtest_integrity_nAIBuqayW70XpUqJS4qf4STYiISd89FpORDER-12399999COP"
+      // SHA256 of "ORDER-12399999COPstagtest_integrity_nAIBuqayW70XpUqJS4qf4STYiISd89Fp"
       const expectedSignature =
-        'c25564615cd1ebbb4f8436f5553a78adab5bf3ee9abb53723602019e481b3c5e';
+        '55df3c05c90334e6123baf1d07b5daedeb0c85567723503fe69d83d93d4336b1';
       expect(createBody.signature).toBe(expectedSignature);
     });
 
@@ -841,7 +841,7 @@ describe('WompiPaymentGateway', () => {
   });
 
   describe('signature generation', () => {
-    it('should generate correct SHA-256 signature with integrity key + reference + amount + currency', () => {
+    it('should generate correct SHA-256 signature with reference + amount + currency + integrity key', () => {
       const gateway = createGateway(jest.fn(), {
         maxRetries: 3,
         baseDelayMs: 10,
@@ -854,7 +854,7 @@ describe('WompiPaymentGateway', () => {
       );
 
       const expected =
-        'c25564615cd1ebbb4f8436f5553a78adab5bf3ee9abb53723602019e481b3c5e';
+        '55df3c05c90334e6123baf1d07b5daedeb0c85567723503fe69d83d93d4336b1';
       expect(signature).toBe(expected);
     });
 
@@ -891,7 +891,7 @@ describe('WompiPaymentGateway', () => {
       });
       const result = (gateway as any).parseExpiry('12/28');
       expect(result.exp_month).toBe(12);
-      expect(result.exp_year).toBe(2028);
+      expect(result.exp_year).toBe(28);
     });
 
     it('should parse M/YY single digit month', () => {
@@ -901,7 +901,7 @@ describe('WompiPaymentGateway', () => {
       });
       const result = (gateway as any).parseExpiry('3/30');
       expect(result.exp_month).toBe(3);
-      expect(result.exp_year).toBe(2030);
+      expect(result.exp_year).toBe(30);
     });
 
     it('should parse MM/YYYY full year format', () => {
@@ -911,7 +911,7 @@ describe('WompiPaymentGateway', () => {
       });
       const result = (gateway as any).parseExpiry('06/2026');
       expect(result.exp_month).toBe(6);
-      expect(result.exp_year).toBe(2026);
+      expect(result.exp_year).toBe(26);
     });
   });
 
