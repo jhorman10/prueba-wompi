@@ -57,20 +57,25 @@ export function Backdrop({ visible, onClose, children, title }: BackdropProps) {
         style={[styles.panel, { transform: [{ translateY: panelTranslate }] }]}
       >
         <View style={styles.header}>
+          <Pressable
+            testID="backdrop-close"
+            style={({ pressed }) => [
+              styles.closeButton,
+              pressed && { opacity: 0.5 },
+            ]}
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            hitSlop={16}
+          >
+            <Text style={styles.closeText}>‹</Text>
+          </Pressable>
           {title ? (
             <Text style={styles.title}>{title}</Text>
           ) : (
             <View style={styles.titleSpacer} />
           )}
-          <Pressable
-            testID="backdrop-close"
-            style={styles.closeButton}
-            onPress={onClose}
-            accessibilityRole="button"
-            accessibilityLabel="Close"
-          >
-            <Text style={styles.closeText}>✕</Text>
-          </Pressable>
+          <View style={styles.titleSpacer} />
         </View>
         {children}
       </Animated.View>
@@ -128,12 +133,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   closeButton: {
-    padding: 8,
-    marginLeft: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginLeft: Platform.OS === 'android' ? -4 : -8,
   },
   closeText: {
-    fontSize: 18,
-    color: '#666',
-    fontWeight: '600',
+    fontSize: 28,
+    lineHeight: 32,
+    color: '#1a1a1a',
+    fontWeight: '300',
   },
 });
