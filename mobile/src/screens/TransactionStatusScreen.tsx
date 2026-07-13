@@ -45,11 +45,11 @@ export function TransactionStatusScreen({
           }}
           style={({ pressed }) => [
             styles.headerExitButton,
-            pressed && { opacity: 0.6 },
+            pressed && { opacity: 0.5 },
           ]}
-          hitSlop={8}
+          hitSlop={16}
         >
-          <Text style={styles.headerExitText}>←</Text>
+          <Text style={styles.headerExitText}>‹</Text>
         </Pressable>
       ),
     });
@@ -204,19 +204,17 @@ const styles = StyleSheet.create({
     color: '#e53935',
   },
   headerExitButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: Platform.OS === 'android' ? 0 : -4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginLeft: Platform.OS === 'android' ? -4 : -8,
   },
   headerExitText: {
-    fontSize: 22,
-    lineHeight: 24,
-    color: '#666',
-    fontWeight: '500',
+    fontSize: 28,
+    lineHeight: 32,
+    color: '#1a1a1a',
+    fontWeight: '300',
   },
   homeButton: {
     backgroundColor: '#6200ee',
