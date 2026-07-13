@@ -1,5 +1,6 @@
-import React from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import React, { useLayoutEffect } from 'react';
+import { View, Text, StyleSheet, Pressable, ScrollView, Platform, BackHandler } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store/store';
 import { PriceTag } from '../components/PriceTag';
@@ -31,6 +32,35 @@ export function TransactionStatusScreen({
   );
 
   const transaction = route?.params?.transaction ?? lastTransaction;
+  const stackNavigation = useNavigation<any>();
+
+  useLayoutEffect(() => {
+    stackNavigation.setOptions({
+      headerLeft: () => (
+        <Pressable
+          onPress={() => {
+            if (Platform.OS === 'android') {
+              BackHandler.exitApp();
+            }
+          }}
+          style={({ pressed }) => [
+            styles.headerExitButton,
+            pressed && { opacity: 0.6 },
+          ]}
+          hitSlop={8}
+        >
+          <Text style={styles.headerExitText}>×</Text>
+        </Pressable>
+      ),
+    });
+  }, [stackNavigation]);
+
+  const goHome = () => {
+    stackNavigation.reset({
+      index: 0,
+      routes: [{ name: 'Home' }],
+    });
+  };
 
   if (!transaction) {
     return (
@@ -38,7 +68,7 @@ export function TransactionStatusScreen({
         <Text style={styles.noDataText}>No transaction data</Text>
         <Pressable
           style={({ pressed }) => [styles.homeButton, pressed && { opacity: 0.8 }]}
-          onPress={() => navigation?.navigate('Home')}
+          onPress={goHome}
         >
           <Text style={styles.homeButtonText}>Back to Home</Text>
         </Pressable>
@@ -86,7 +116,7 @@ export function TransactionStatusScreen({
 
       <Pressable
         style={({ pressed }) => [styles.homeButton, pressed && { opacity: 0.8 }]}
-        onPress={() => navigation?.navigate('Home')}
+        onPress={goHome}
       >
         <Text style={styles.homeButtonText}>Back to Home</Text>
       </Pressable>
@@ -172,6 +202,21 @@ const styles = StyleSheet.create({
   },
   failureValue: {
     color: '#e53935',
+  },
+  headerExitButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: Platform.OS === 'android' ? 0 : -4,
+  },
+  headerExitText: {
+    fontSize: 22,
+    lineHeight: 24,
+    color: '#666',
+    fontWeight: '500',
   },
   homeButton: {
     backgroundColor: '#6200ee',

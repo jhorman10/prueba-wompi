@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useState, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,10 @@ import {
   StyleSheet,
   ActivityIndicator,
   Pressable,
+  Platform,
+  BackHandler,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
 import { Product, setProducts, setLoading, setError } from '../store/slices/productsSlice';
@@ -53,6 +56,29 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
     await fetchProducts();
     setRefreshing(false);
   }, [fetchProducts]);
+
+  const stackNavigation = useNavigation<any>();
+
+  useLayoutEffect(() => {
+    stackNavigation.setOptions({
+      headerLeft: () => (
+        <Pressable
+          onPress={() => {
+            if (Platform.OS === 'android') {
+              BackHandler.exitApp();
+            }
+          }}
+          style={({ pressed }) => [
+            styles.headerExitButton,
+            pressed && { opacity: 0.6 },
+          ]}
+          hitSlop={8}
+        >
+          <Text style={styles.headerExitText}>×</Text>
+        </Pressable>
+      ),
+    });
+  }, [stackNavigation]);
 
   const handleSelectProduct = useCallback((product: Product) => {
     navigation?.navigate('SelectProduct', { product });
@@ -160,6 +186,21 @@ const styles = StyleSheet.create({
     marginTop: 40,
     fontSize: 14,
     color: '#999',
+  },
+  headerExitButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: Platform.OS === 'android' ? 0 : -4,
+  },
+  headerExitText: {
+    fontSize: 22,
+    lineHeight: 24,
+    color: '#666',
+    fontWeight: '500',
   },
   cartBar: {
     position: 'absolute',
