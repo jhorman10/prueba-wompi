@@ -51,7 +51,7 @@ export function SelectProductScreen({
       // Yield so the loading state is reflected in the UI while we process.
       await new Promise<void>((resolve) => setTimeout(resolve, 0));
       dispatch(addItem({ productId: product.id, quantity }));
-      navigation?.navigate('Home');
+      navigation?.navigate('Checkout');
     } finally {
       setAdding(false);
     }

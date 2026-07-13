@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <rect width="400" height="300" rx="16" fill="#f0edff"/>
+  <!-- Screen -->
+  <rect x="80" y="40" width="240" height="160" rx="8" fill="#1a1a2e"/>
+  <rect x="96" y="56" width="208" height="128" rx="4" fill="#16213e"/>
+  <!-- Screen content -->
+  <rect x="112" y="72" width="80" height="8" rx="4" fill="#0f3460"/>
+  <rect x="112" y="88" width="120" height="8" rx="4" fill="#0f3460"/>
+  <rect x="112" y="104" width="60" height="8" rx="4" fill="#0f3460"/>
+  <rect x="112" y="128" width="176" height="40" rx="4" fill="#0f3460"/>
+  <!-- Keyboard base -->
+  <rect x="60" y="200" width="280" height="20" rx="4" fill="#e8e4ff"/>
+  <rect x="50" y="220" width="300" height="40" rx="6" fill="#d0c8ff"/>
+  <!-- Keys -->
+  <rect x="62" y="228" width="20" height="12" rx="2" fill="#c0b5ff"/>
+  <rect x="88" y="228" width="20" height="12" rx="2" fill="#c0b5ff"/>
+  <rect x="114" y="228" width="20" height="12" rx="2" fill="#c0b5ff"/>
+  <rect x="140" y="228" width="20" height="12" rx="2" fill="#c0b5ff"/>
+  <rect x="166" y="228" width="20" height="12" rx="2" fill="#c0b5ff"/>
+  <rect x="192" y="228" width="20" height="12" rx="2" fill="#c0b5ff"/>
+  <rect x="218" y="228" width="20" height="12" rx="2" fill="#c0b5ff"/>
+  <rect x="244" y="228" width="20" height="12" rx="2" fill="#c0b5ff"/>
+  <rect x="270" y="228" width="20" height="12" rx="2" fill="#c0b5ff"/>
+  <rect x="296" y="228" width="20" height="12" rx="2" fill="#c0b5ff"/>
+  <rect x="322" y="228" width="20" height="12" rx="2" fill="#c0b5ff"/>
+  <!-- Trackpad -->
+  <rect x="165" y="244" width="70" height="10" rx="5" fill="#b0a3ff"/>
+</svg>
