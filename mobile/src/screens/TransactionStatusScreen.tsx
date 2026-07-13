@@ -49,7 +49,7 @@ export function TransactionStatusScreen({
           ]}
           hitSlop={8}
         >
-          <Text style={styles.headerExitText}>×</Text>
+          <Text style={styles.headerExitText}>←</Text>
         </Pressable>
       ),
     });

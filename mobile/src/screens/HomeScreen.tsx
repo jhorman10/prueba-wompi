@@ -74,7 +74,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
           ]}
           hitSlop={8}
         >
-          <Text style={styles.headerExitText}>×</Text>
+          <Text style={styles.headerExitText}>←</Text>
         </Pressable>
       ),
     });
