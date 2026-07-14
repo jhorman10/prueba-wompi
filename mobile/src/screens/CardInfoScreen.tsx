@@ -5,14 +5,12 @@ import {
   StyleSheet,
   Pressable,
   ScrollView,
-  Image,
   ActivityIndicator,
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
 import { setCardInfo, advanceStep } from '../store/slices/checkoutSlice';
 import { CardInput } from '../components/CardInput';
-import { Backdrop } from '../components/Backdrop';
 import {
   detectBrand,
   isValidLuhn,
@@ -48,6 +46,19 @@ function validateExpiry(value: string): string | undefined {
   return undefined;
 }
 
+function getBrandColor(brand: CardBrand): string {
+  switch (brand) {
+    case 'visa': return '#1A1F71';
+    case 'mastercard': return '#EB001B';
+    case 'amex': return '#2E77BC';
+    case 'diners': return '#0079BE';
+    case 'discover': return '#FF6000';
+    case 'elo': return '#000000';
+    case 'hipercard': return '#B3131B';
+    default: return '#5E5E5E';
+  }
+}
+
 /**
  * Card info screen — collects credit card details with brand detection and validation.
  */
@@ -65,13 +76,14 @@ export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
   const [errors, setErrors] = useState<CardFormErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
-  const handleClose = useCallback(() => {
-    if (navigation?.goBack) navigation.goBack();
-    else navigation?.navigate('Checkout');
-  }, [navigation]);
-
   const brand: CardBrand = number ? detectBrand(number) : 'unknown';
   const brandName = getBrandName(brand);
+  const brandColor = getBrandColor(brand);
+  const displayNumber = formatCardNumber(number);
+
+  const maskedNumber = number
+    ? `•••• •••• •••• ${number.slice(-4)}`
+    : '•••• •••• •••• ••••';
 
   const handleNumberChange = useCallback((text: string) => {
     const cleaned = text.replace(/\D/g, '').slice(0, 16);
@@ -129,9 +141,7 @@ export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
 
     setSubmitting(true);
     try {
-      // Yield so the loading state is reflected in the UI while we process.
       await new Promise<void>((resolve) => setTimeout(resolve, 0));
-      // Only store safe card info in Redux (no PAN, no CVV — PCI DSS)
       dispatch(
         setCardInfo({
           lastFour: number.slice(-4),
@@ -141,7 +151,6 @@ export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
         }),
       );
       dispatch(advanceStep());
-      // Pass sensitive data (PAN, CVV) via route params — never via Redux
       navigation?.navigate('PaymentSummary', {
         cardNumber: number,
         cardExpiry: expiry,
@@ -152,33 +161,46 @@ export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
     }
   };
 
-  const displayNumber = formatCardNumber(number);
-
   return (
-    <Backdrop visible title="Credit Card Info" onClose={handleClose}>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Card number with brand logo */}
-      <View style={styles.cardNumberRow}>
-        <View style={styles.cardNumberInput}>
-          <CardInput
-            value={displayNumber}
-            onChangeText={handleNumberChange}
-            placeholder="0000 0000 0000 0000"
-            label="Card Number"
-            error={errors.number}
-            keyboardType="number-pad"
-          />
-        </View>
-        {brandName ? (
-          <View style={styles.brandLogo}>
-            <Text style={styles.brandLogoText}>{brandName}</Text>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
+      {/* Credit card preview */}
+      <View style={[styles.cardPreview, { backgroundColor: brandColor }]}>
+        <View style={styles.cardChip} />
+        <Text style={styles.cardNumberText}>
+          {displayNumber || maskedNumber}
+        </Text>
+        <View style={styles.cardFooter}>
+          <View>
+            <Text style={styles.cardLabel}>CARD HOLDER</Text>
+            <Text style={styles.cardValue}>
+              {cardholderName || 'YOUR NAME'}
+            </Text>
           </View>
-        ) : null}
+          <View>
+            <Text style={styles.cardLabel}>EXPIRES</Text>
+            <Text style={styles.cardValue}>{expiry || 'MM/YY'}</Text>
+          </View>
+        </View>
+        {brandName && (
+          <View style={styles.cardBrandBadge}>
+            <Text style={styles.cardBrandText}>{brandName}</Text>
+          </View>
+        )}
       </View>
+
+      {/* Form fields */}
+      <CardInput
+        value={displayNumber}
+        onChangeText={handleNumberChange}
+        placeholder="0000 0000 0000 0000"
+        label="Card Number"
+        error={errors.number}
+        keyboardType="number-pad"
+      />
 
       <View style={styles.row}>
         <View style={[styles.halfField, styles.halfFieldFirst]}>
@@ -214,6 +236,14 @@ export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
         error={errors.name}
       />
 
+      {/* Security note */}
+      <View style={styles.securityRow}>
+        <Text style={styles.securityIcon}>✓</Text>
+        <Text style={styles.securityText}>
+          Your card details are encrypted and never stored on our servers
+        </Text>
+      </View>
+
       <Pressable
         style={({ pressed }) => [styles.continueButton, pressed && { opacity: 0.8 }]}
         onPress={handleContinue}
@@ -222,43 +252,76 @@ export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
         {submitting ? (
           <ActivityIndicator color="#fff" testID="continue-spinner" />
         ) : (
-          <Text style={styles.continueButtonText}>Continue</Text>
+          <Text style={styles.continueButtonText}>Pay Now</Text>
         )}
       </Pressable>
-      </ScrollView>
-    </Backdrop>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f5f5f5',
   },
   content: {
     padding: 16,
     paddingBottom: 40,
   },
-  cardNumberRow: {
+
+  /* Card preview */
+  cardPreview: {
+    borderRadius: 16,
+    padding: 24,
+    paddingTop: 28,
+    marginBottom: 28,
+    minHeight: 190,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  cardChip: {
+    width: 40,
+    height: 30,
+    borderRadius: 4,
+    backgroundColor: '#FFD700',
+    marginBottom: 24,
+  },
+  cardNumberText: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: '#fff',
+    letterSpacing: 2,
+    marginBottom: 24,
+    fontVariant: ['tabular-nums'],
+  },
+  cardFooter: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    justifyContent: 'space-between',
   },
-  cardNumberInput: {
-    flex: 1,
+  cardLabel: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 1,
+    marginBottom: 4,
   },
-  brandLogo: {
-    marginLeft: 8,
-    marginTop: 28,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 6,
+  cardValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
-  brandLogoText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#333',
+  cardBrandBadge: {
+    position: 'absolute',
+    top: 16,
+    right: 20,
   },
+  cardBrandText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.9)',
+    letterSpacing: 1,
+  },
+
+  /* Form */
   row: {
     flexDirection: 'row',
   },
@@ -271,16 +334,39 @@ const styles = StyleSheet.create({
   halfFieldSecond: {
     marginLeft: 6,
   },
+
+  /* Security */
+  securityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  securityIcon: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#4caf50',
+    marginRight: 8,
+  },
+  securityText: {
+    fontSize: 12,
+    color: '#888',
+    flex: 1,
+    lineHeight: 16,
+  },
+
+  /* Button */
   continueButton: {
-    marginTop: 24,
+    marginTop: 16,
     backgroundColor: '#6200ee',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 14,
+    padding: 18,
     alignItems: 'center',
   },
   continueButtonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
   },
 });
