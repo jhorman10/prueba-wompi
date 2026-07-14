@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f5f0ff"/>
+      <stop offset="100%" stop-color="#ede5ff"/>
+    </linearGradient>
+    <linearGradient id="headband" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#312e81"/>
+      <stop offset="100%" stop-color="#1e1b4b"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" rx="16" fill="url(#bg)"/>
+  <!-- Headband arc -->
+  <path d="M120 100 C120 50, 280 50, 280 100" stroke="url(#headband)" stroke-width="12" stroke-linecap="round" fill="none"/>
+  <!-- Headband padding -->
+  <path d="M155 60 C155 45, 245 45, 245 60" stroke="#4338ca" stroke-width="8" stroke-linecap="round" fill="none" opacity="0.3"/>
+  <!-- Left ear cup -->
+  <rect x="90" y="100" width="60" height="90" rx="20" fill="#312e81" stroke="#4338ca" stroke-width="2"/>
+  <rect x="100" y="110" width="40" height="60" rx="12" fill="#6d28d9" opacity="0.3"/>
+  <rect x="108" y="118" width="24" height="8" rx="4" fill="#7c3aed" opacity="0.4"/>
+  <rect x="108" y="132" width="24" height="8" rx="4" fill="#7c3aed" opacity="0.4"/>
+  <rect x="108" y="146" width="24" height="8" rx="4" fill="#7c3aed" opacity="0.4"/>
+  <!-- Right ear cup -->
+  <rect x="250" y="100" width="60" height="90" rx="20" fill="#312e81" stroke="#4338ca" stroke-width="2"/>
+  <rect x="260" y="110" width="40" height="60" rx="12" fill="#6d28d9" opacity="0.3"/>
+  <rect x="268" y="118" width="24" height="8" rx="4" fill="#7c3aed" opacity="0.4"/>
+  <rect x="268" y="132" width="24" height="8" rx="4" fill="#7c3aed" opacity="0.4"/>
+  <rect x="268" y="146" width="24" height="8" rx="4" fill="#7c3aed" opacity="0.4"/>
+  <!-- Left cushion -->
+  <ellipse cx="120" cy="145" rx="18" ry="45" fill="#4338ca" opacity="0.5"/>
+  <!-- Right cushion -->
+  <ellipse cx="280" cy="145" rx="18" ry="45" fill="#4338ca" opacity="0.5"/>
+  <!-- Sound waves left -->
+  <path d="M78 130 C72 130, 72 160, 78 160" stroke="#a5b4fc" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.4"/>
+  <path d="M70 120 C60 120, 60 170, 70 170" stroke="#a5b4fc" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.25"/>
+  <!-- Sound waves right -->
+  <path d="M322 130 C328 130, 328 160, 322 160" stroke="#a5b4fc" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.4"/>
+  <path d="M330 120 C340 120, 340 170, 330 170" stroke="#a5b4fc" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.25"/>
+</svg>

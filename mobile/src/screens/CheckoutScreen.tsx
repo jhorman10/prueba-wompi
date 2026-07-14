@@ -4,8 +4,9 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
 import { CartItem } from '../components/CartItem';
 import { PriceTag } from '../components/PriceTag';
-import { removeItem, clearCart, updateQuantity } from '../store/slices/cartSlice';
+import { removeItem } from '../store/slices/cartSlice';
 import { selectTotalCents, selectGetProduct } from '../store/selectors';
+import { useTheme, Theme } from '../theme/ThemeContext';
 
 interface CheckoutScreenProps {
   navigation?: {
@@ -17,6 +18,9 @@ interface CheckoutScreenProps {
  * Checkout screen — shows cart summary and "Pay with credit card" button.
  */
 export function CheckoutScreen({ navigation }: CheckoutScreenProps) {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+  const { colors, spacing } = theme;
   const dispatch = useDispatch<AppDispatch>();
   const cartItems = useSelector((state: RootState) => state.cart?.items ?? []);
   const getProduct = useSelector(selectGetProduct);
@@ -43,10 +47,10 @@ export function CheckoutScreen({ navigation }: CheckoutScreenProps) {
 
   if (cartItems.length === 0) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
         <Text style={styles.emptyText}>Your cart is empty</Text>
         <Pressable
-          style={({ pressed }) => [styles.shopButton, pressed && { opacity: 0.8 }]}
+          style={({ pressed }) => [styles.shopButton, pressed && { opacity: 0.7 }]}
           onPress={() => navigation?.navigate('Home')}
         >
           <Text style={styles.shopButtonText}>Continue Shopping</Text>
@@ -73,7 +77,7 @@ export function CheckoutScreen({ navigation }: CheckoutScreenProps) {
         </View>
 
         <Pressable
-          style={({ pressed }) => [styles.payButton, pressed && { opacity: 0.8 }]}
+          style={({ pressed }) => [styles.payButton, pressed && { opacity: 0.7 }]}
           onPress={handleProceedToPayment}
         >
           <Text style={styles.payButtonText}>Pay with credit card</Text>
@@ -83,70 +87,71 @@ export function CheckoutScreen({ navigation }: CheckoutScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f8f8',
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 16,
-  },
-  shopButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: '#6200ee',
-    borderRadius: 8,
-  },
-  shopButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  heading: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    padding: 16,
-  },
-  list: {
-    paddingBottom: 8,
-  },
-  footer: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  totalLabel: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  totalAmount: {
-    fontSize: 22,
-  },
-  payButton: {
-    backgroundColor: '#6200ee',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  payButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
+const getStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    center: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: theme.spacing.base,
+    },
+    emptyText: {
+      fontSize: theme.typography.body.fontSize,
+      color: theme.colors.textSecondary,
+      marginBottom: theme.spacing.base,
+    },
+    shopButton: {
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing.md,
+      backgroundColor: theme.colors.primary,
+      borderRadius: theme.radius.sm,
+    },
+    shopButtonText: {
+      color: theme.colors.textOnPrimary,
+      fontWeight: '600',
+    },
+    heading: {
+      fontSize: theme.typography.h2.fontSize,
+      fontWeight: theme.typography.h2.fontWeight,
+      color: theme.colors.text,
+      padding: theme.spacing.base,
+    },
+    list: {
+      paddingBottom: theme.spacing.sm,
+    },
+    footer: {
+      backgroundColor: theme.colors.surface,
+      padding: theme.spacing.base,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
+    totalRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: theme.spacing.base,
+    },
+    totalLabel: {
+      fontSize: theme.typography.bodyBold.fontSize,
+      fontWeight: theme.typography.bodyBold.fontWeight,
+      color: theme.colors.text,
+    },
+    totalAmount: {
+      fontSize: 22,
+    },
+    payButton: {
+      backgroundColor: theme.colors.primary,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.base,
+      alignItems: 'center',
+    },
+    payButtonText: {
+      color: theme.colors.textOnPrimary,
+      fontSize: theme.typography.bodyBold.fontSize,
+      fontWeight: theme.typography.bodyBold.fontWeight,
+    },
+  });

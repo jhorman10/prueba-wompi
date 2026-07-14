@@ -1,16 +1,39 @@
-export type CardBrand = 'visa' | 'mastercard' | 'unknown';
+export type CardBrand =
+  | 'visa'
+  | 'mastercard'
+  | 'amex'
+  | 'diners'
+  | 'discover'
+  | 'elo'
+  | 'hipercard'
+  | 'unknown';
 
 /**
  * Detect card brand based on IIN (first digits).
- * Visa: starts with 4
- * MasterCard: starts with 51-55
+ * Supports major brands: Visa, MasterCard, Amex, Diners, Discover, Elo, Hipercard.
  */
 export function detectBrand(cardNumber: string): CardBrand {
   const cleaned = cardNumber.replace(/\D/g, '');
   if (!cleaned) return 'unknown';
 
-  if (cleaned.startsWith('4')) return 'visa';
+  // Elo: 636368, 438935, 504175, 451416, 636297, 5067, 4576, 4011
+  if (/^(636368|438935|504175|451416|636297|5067|4576|4011)/.test(cleaned))
+    return 'elo';
+  // Hipercard: 606282
+  if (/^606282/.test(cleaned)) return 'hipercard';
+  // Diners: 300-305, 36, 38
+  if (/^3(?:0[0-5]|[68])/.test(cleaned)) return 'diners';
+  // Discover: 6011, 65, 644-649, 622126-622925
+  if (
+    /^(6011|65|64[4-9]|622(?:1[2-9]|[2-8]\d|9[0-2]\d?))/.test(cleaned)
+  )
+    return 'discover';
+  // Amex: 34, 37
+  if (/^3[47]/.test(cleaned)) return 'amex';
+  // MasterCard: 51-55
   if (/^5[1-5]/.test(cleaned)) return 'mastercard';
+  // Visa: 4
+  if (cleaned.startsWith('4')) return 'visa';
   return 'unknown';
 }
 
@@ -54,6 +77,11 @@ export function formatCardNumber(value: string): string {
 const BRAND_DISPLAY_NAMES: Record<CardBrand, string> = {
   visa: 'Visa',
   mastercard: 'Mastercard',
+  amex: 'Amex',
+  diners: 'Diners',
+  discover: 'Discover',
+  elo: 'Elo',
+  hipercard: 'Hipercard',
   unknown: '',
 };
 

@@ -38,22 +38,22 @@ export class AppModule implements OnModuleInit {
       {
         name: 'Laptop',
         description: 'High-performance laptop with 16GB RAM and 512GB SSD',
-        price: 99999,
-        imageUrl: '/images/laptop.jpg',
+        price: 250000,
+        imageUrl: '/images/laptop.png',
         stock: 10,
       },
       {
         name: 'Phone',
         description: 'Latest smartphone with 128GB storage and 5G',
-        price: 49999,
-        imageUrl: '/images/phone.jpg',
+        price: 150000,
+        imageUrl: '/images/phone.png',
         stock: 15,
       },
       {
         name: 'Headphones',
         description: 'Wireless noise-canceling headphones',
-        price: 7999,
-        imageUrl: '/images/headphones.jpg',
+        price: 200000,
+        imageUrl: '/images/headphones.png',
         stock: 25,
       },
     ];

@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useState, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,17 @@ import {
   StyleSheet,
   ActivityIndicator,
   Pressable,
+  Platform,
+  BackHandler,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
 import { Product, setProducts, setLoading, setError } from '../store/slices/productsSlice';
 import { ProductCard } from '../components/ProductCard';
 import { getApiClientInstance } from '../services/api';
 import { selectCartCount } from '../store/selectors';
+import { useTheme, Theme } from '../theme/ThemeContext';
 
 interface HomeScreenProps {
   navigation?: {
@@ -24,6 +28,9 @@ interface HomeScreenProps {
  * Home screen — fetches and displays product list from backend.
  */
 export function HomeScreen({ navigation }: HomeScreenProps) {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+  const { colors, spacing } = theme;
   const dispatch = useDispatch<AppDispatch>();
   const { items: products, loading, error } = useSelector(
     (state: RootState) => state.products,
@@ -54,6 +61,29 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
     setRefreshing(false);
   }, [fetchProducts]);
 
+  const stackNavigation = useNavigation<any>();
+
+  useLayoutEffect(() => {
+    stackNavigation.setOptions({
+      headerLeft: () => (
+        <Pressable
+          onPress={() => {
+            if (Platform.OS === 'android') {
+              BackHandler.exitApp();
+            }
+          }}
+          style={({ pressed }) => [
+            styles.headerExitButton,
+            pressed && { opacity: 0.7 },
+          ]}
+          hitSlop={16}
+        >
+          <Text style={[styles.headerExitText, { color: colors.tint }]}>‹</Text>
+        </Pressable>
+      ),
+    });
+  }, [stackNavigation, colors.tint]);
+
   const handleSelectProduct = useCallback((product: Product) => {
     navigation?.navigate('SelectProduct', { product });
   }, [navigation]);
@@ -71,7 +101,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
 
       {loading && products.length === 0 ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#6200ee" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading products...</Text>
         </View>
       ) : error && products.length === 0 ? (
@@ -79,7 +109,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
           <Text style={styles.errorText}>Error: {error}</Text>
           <Pressable
             onPress={fetchProducts}
-            style={({ pressed }) => [styles.retryButton, pressed && { opacity: 0.8 }]}
+            style={({ pressed }) => [styles.retryButton, pressed && { opacity: 0.7 }]}
           >
             <Text style={styles.retryText}>Retry</Text>
           </Pressable>
@@ -101,7 +131,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
 
       {cartCount > 0 && (
         <Pressable
-          style={({ pressed }) => [styles.cartBar, pressed && { opacity: 0.8 }]}
+          style={({ pressed }) => [styles.cartBar, pressed && { opacity: 0.7 }]}
           onPress={() => navigation?.navigate('Checkout')}
         >
           <Text style={styles.cartBarText}>
@@ -113,68 +143,81 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f8f8',
-  },
-  heading: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#666',
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#e53935',
-    marginBottom: 12,
-  },
-  retryButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: '#6200ee',
-    borderRadius: 8,
-  },
-  retryText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  list: {
-    paddingBottom: 80,
-  },
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 40,
-    fontSize: 14,
-    color: '#999',
-  },
-  cartBar: {
-    position: 'absolute',
-    bottom: 16,
-    left: 16,
-    right: 16,
-    backgroundColor: '#6200ee',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    boxShadow: '0 4px 8px rgba(98,0,238,0.3)',
-  },
-  cartBarText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
+const getStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    heading: {
+      fontSize: theme.typography.h2.fontSize,
+      fontWeight: theme.typography.h2.fontWeight,
+      color: theme.colors.text,
+      paddingHorizontal: theme.spacing.base,
+      paddingTop: theme.spacing.base,
+      paddingBottom: theme.spacing.sm,
+    },
+    center: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    loadingText: {
+      marginTop: theme.spacing.md,
+      fontSize: theme.typography.body.fontSize,
+      color: theme.colors.textSecondary,
+    },
+    errorText: {
+      fontSize: theme.typography.body.fontSize,
+      color: theme.colors.error,
+      marginBottom: theme.spacing.md,
+    },
+    retryButton: {
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing.sm,
+      backgroundColor: theme.colors.primary,
+      borderRadius: theme.radius.sm,
+    },
+    retryText: {
+      color: theme.colors.textOnPrimary,
+      fontWeight: '600',
+      fontSize: theme.typography.body.fontSize,
+    },
+    list: {
+      paddingBottom: 80,
+    },
+    emptyText: {
+      textAlign: 'center',
+      marginTop: theme.spacing.xl,
+      fontSize: theme.typography.body.fontSize,
+      color: theme.colors.textPlaceholder,
+    },
+    headerExitButton: {
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
+      marginLeft: Platform.OS === 'android' ? -4 : -8,
+    },
+    headerExitText: {
+      fontSize: 28,
+      lineHeight: 32,
+      fontWeight: '300',
+    },
+    cartBar: {
+      position: 'absolute',
+      bottom: theme.spacing.base,
+      left: theme.spacing.base,
+      right: theme.spacing.base,
+      backgroundColor: theme.colors.primary,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.base,
+      alignItems: 'center',
+      ...theme.shadows.md,
+    },
+    cartBarText: {
+      color: theme.colors.textOnPrimary,
+      fontSize: theme.typography.bodyBold.fontSize,
+      fontWeight: theme.typography.bodyBold.fontWeight,
+    },
+  });

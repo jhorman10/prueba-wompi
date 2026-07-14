@@ -4,12 +4,15 @@ import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from './src/store/store';
 import { AppNavigator } from './src/navigation/AppNavigator';
+import { ThemeProvider } from './src/theme/ThemeContext';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { lightColors } from './src/theme/colors';
 
 /**
  * Root application component.
  * Wraps the app in Redux Provider, PersistGate for rehydration,
- * SafeAreaProvider for safe area insets, and the stack navigator.
+ * SafeAreaProvider for safe area insets, ThemeProvider for theming,
+ * and the stack navigator.
  */
 export default function App() {
   return (
@@ -17,13 +20,15 @@ export default function App() {
       <PersistGate
         loading={
           <View style={styles.loading}>
-            <ActivityIndicator size="large" color="#6200ee" />
+            <ActivityIndicator size="large" color={lightColors.primary} />
           </View>
         }
         persistor={persistor}
       >
         <SafeAreaProvider>
-          <AppNavigator />
+          <ThemeProvider>
+            <AppNavigator />
+          </ThemeProvider>
         </SafeAreaProvider>
       </PersistGate>
     </Provider>
@@ -35,6 +40,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: lightColors.background,
   },
 });

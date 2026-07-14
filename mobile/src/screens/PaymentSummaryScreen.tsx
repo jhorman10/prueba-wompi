@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Pressable,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
@@ -17,12 +18,12 @@ import {
 import { addTransaction } from '../store/slices/transactionsSlice';
 import { clearCart } from '../store/slices/cartSlice';
 import { PriceTag } from '../components/PriceTag';
-import { Backdrop } from '../components/Backdrop';
 import { Toast } from '../components/Toast';
-import { createApiClient } from '../services/api';
-import { API_BASE_URL } from '../config/api';
+import { getApiClientInstance } from '../services/api';
 import { processPayment } from '../services/paymentService';
 import { selectTotalCents, selectGetProduct } from '../store/selectors';
+import { getBrandName, CardBrand } from '../services/cardDetection';
+import { useTheme, Theme } from '../theme/ThemeContext';
 
 interface PaymentSummaryScreenProps {
   navigation?: {
@@ -38,6 +39,19 @@ interface PaymentSummaryScreenProps {
   };
 }
 
+function getBrandColor(brand: CardBrand): string {
+  switch (brand) {
+    case 'visa': return '#1A1F71';
+    case 'mastercard': return '#EB001B';
+    case 'amex': return '#2E77BC';
+    case 'diners': return '#0079BE';
+    case 'discover': return '#FF6000';
+    case 'elo': return '#000000';
+    case 'hipercard': return '#B3131B';
+    default: return '#5E5E5E';
+  }
+}
+
 /**
  * Payment summary screen — shows order summary and processes payment.
  * Card number and CVC arrive via route params (not Redux) for PCI DSS compliance.
@@ -46,6 +60,9 @@ export function PaymentSummaryScreen({
   navigation,
   route,
 }: PaymentSummaryScreenProps) {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+  const { colors, spacing, radius } = theme;
   const dispatch = useDispatch<AppDispatch>();
   const checkout = useSelector((state: RootState) => state.checkout);
   const cartItems = useSelector((state: RootState) => state.cart?.items ?? []);
@@ -58,22 +75,23 @@ export function PaymentSummaryScreen({
   const [processing, setProcessing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const handleClose = useCallback(() => {
-    if (navigation?.goBack) navigation.goBack();
-    else navigation?.navigate('CardInfo');
-  }, [navigation]);
-
   const dismissToast = useCallback(() => setToastMessage(null), []);
 
   const totalCents = useSelector(selectTotalCents);
   const getProduct = useSelector(selectGetProduct);
+
+  const cardLastFour = routeCardNumber.slice(-4) ?? checkout.cardInfo?.lastFour ?? '';
+  const cardBrandName = checkout.cardInfo?.brand ?? 'unknown';
+  const cardBrand = cardBrandName as CardBrand;
+  const brandColor = getBrandColor(cardBrand);
+  const brandDisplay = getBrandName(cardBrand);
+  const cardholderName = checkout.cardInfo?.cardholderName ?? '';
 
   const handlePay = useCallback(async () => {
     console.log('[Pay] clicked, cartItems:', cartItems.length, 'totalCents:', totalCents, 'routeCardNumber:', routeCardNumber ? routeCardNumber.slice(-4) : 'empty');
     setProcessing(true);
     setToastMessage(null);
 
-    // Allow "Processing..." state to render in tests
     if (__DEV__) {
       await new Promise(r => setTimeout(r, 50));
     }
@@ -85,13 +103,12 @@ export function PaymentSummaryScreen({
         return;
       }
 
-      const api = createApiClient(API_BASE_URL);
-      // Card data comes from route params (Redux only holds safe truncated data — PCI DSS)
+      const api = getApiClientInstance();
       const cardInfo = {
         number: routeCardNumber,
         expiry: routeCardExpiry,
         cvc: routeCardCvc,
-        cardholderName: checkout.cardInfo?.cardholderName ?? '',
+        cardholderName,
       };
       const items = cartItems.map((ci) => ({
         productId: ci.productId,
@@ -104,7 +121,6 @@ export function PaymentSummaryScreen({
       );
 
       dispatch(setToken(token));
-      // Clear sensitive card info only after the payment flow completes (PCI DSS)
       dispatch(clearCardInfo());
       dispatch(setTransactionId(transaction.id));
       dispatch(addTransaction(transaction));
@@ -130,147 +146,277 @@ export function PaymentSummaryScreen({
     routeCardNumber,
     routeCardExpiry,
     routeCardCvc,
+    cardholderName,
   ]);
 
-  const cardLastFour = routeCardNumber.slice(-4) ?? checkout.cardInfo?.lastFour ?? '';
-  const cardBrand = checkout.cardInfo?.brand ?? 'unknown';
-
   return (
-    <Backdrop visible title="Payment Summary" onClose={handleClose}>
+    <View style={styles.root}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
       >
-        {/* Order items */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Items</Text>
-        {cartItems.map((item) => {
-          const product = getProduct(item.productId);
-          return (
-            <View key={item.productId} style={styles.itemRow}>
-              <Text style={styles.itemName} numberOfLines={1}>
-                {product?.name ?? 'Unknown'} x{item.quantity}
-              </Text>
-              <PriceTag
-                cents={(product?.price ?? 0) * item.quantity}
-                style={styles.itemPrice}
-              />
+        {/* Order items section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Items</Text>
+          {cartItems.map((item) => {
+            const product = getProduct(item.productId);
+            return (
+              <View key={item.productId} style={styles.itemRow}>
+                <View style={styles.itemInfo}>
+                  <Text style={styles.itemName} numberOfLines={1}>
+                    {product?.name ?? 'Unknown'}
+                  </Text>
+                  <Text style={styles.itemQty}>Qty: {item.quantity}</Text>
+                </View>
+                <PriceTag
+                  cents={(product?.price ?? 0) * item.quantity}
+                  style={styles.itemPrice}
+                />
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Payment method section with compact card preview */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Payment Method</Text>
+          <View style={[styles.miniCard, { backgroundColor: brandColor }]}>
+            <View style={styles.miniCardRow}>
+              <View style={styles.miniChip} />
+              {brandDisplay && (
+                <Text style={styles.miniBrand}>{brandDisplay}</Text>
+              )}
             </View>
-          );
-        })}
-      </View>
+            <Text style={styles.miniCardNumber}>
+              •••• •••• •••• {cardLastFour}
+            </Text>
+            <View style={styles.miniCardRow}>
+              <Text style={styles.miniCardName} numberOfLines={1}>
+                {cardholderName || 'Cardholder'}
+              </Text>
+              <Text style={styles.miniCardExpiry}>
+                {routeCardExpiry || 'MM/YY'}
+              </Text>
+            </View>
+          </View>
+        </View>
 
-      {/* Card info */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Payment Method</Text>
-        <Text style={styles.cardInfo}>
-          {cardBrand === 'visa'
-            ? 'Visa'
-            : cardBrand === 'mastercard'
-            ? 'MasterCard'
-            : 'Card'}{' '}
-          **** {cardLastFour}
-        </Text>
-        <Text style={styles.cardInfo}>
-          {checkout.cardInfo?.cardholderName}
-        </Text>
-      </View>
+        {/* Total */}
+        <View style={styles.totalSection}>
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Total</Text>
+            <PriceTag cents={totalCents} style={styles.totalAmount} />
+          </View>
+        </View>
 
-      {/* Total */}
-      <View style={styles.totalRow}>
-        <Text style={styles.totalLabel}>Total</Text>
-        <PriceTag cents={totalCents} style={styles.totalAmount} />
-      </View>
-
-      {/* Pay button */}
-      <Pressable
-        style={({ pressed }) => [
-          styles.payButton,
-          processing && styles.disabledButton,
-          pressed && { opacity: 0.8 },
-        ]}
-        onPress={handlePay}
-        disabled={processing}
-      >
-        <Text style={styles.payButtonText}>
-          {processing ? 'Processing...' : `Pay ${totalCents > 0 ? '$' + (totalCents / 100).toFixed(2) : ''}`}
-        </Text>
-        </Pressable>
+        {/* Security note */}
+        <View style={styles.securityRow}>
+          <Text style={styles.securityIcon}>✓</Text>
+          <Text style={styles.securityText}>
+            Your payment is processed securely. Card details are encrypted.
+          </Text>
+        </View>
       </ScrollView>
+
+      {/* Fixed bottom pay button */}
+      <View style={styles.bottomBar}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.payButton,
+            processing && styles.disabledButton,
+            pressed && !processing && { opacity: 0.7 },
+          ]}
+          onPress={handlePay}
+          disabled={processing}
+        >
+          {processing ? (
+            <View style={styles.processingRow}>
+              <ActivityIndicator color={colors.textOnPrimary} size="small" />
+              <Text style={styles.payButtonText}>  Processing...</Text>
+            </View>
+          ) : (
+            <Text style={styles.payButtonText}>
+              Pay ${(totalCents / 100).toFixed(2)}
+            </Text>
+          )}
+        </Pressable>
+      </View>
+
       <Toast message={toastMessage} onDismiss={dismissToast} />
-    </Backdrop>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  section: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  itemName: {
-    fontSize: 14,
-    color: '#333',
-    flex: 1,
-    marginRight: 8,
-  },
-  itemPrice: {
-    fontSize: 14,
-  },
-  cardInfo: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-  },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#ddd',
-    marginBottom: 16,
-  },
-  totalLabel: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1a1a1a',
-  },
-  totalAmount: {
-    fontSize: 22,
-  },
-  payButton: {
-    backgroundColor: '#6200ee',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  disabledButton: {
-    backgroundColor: '#b39ddb',
-  },
-  payButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-});
+const getStyles = (theme: Theme) =>
+  StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    container: {
+      flex: 1,
+    },
+    content: {
+      padding: theme.spacing.base,
+      paddingBottom: 100,
+    },
+
+    /* Section */
+    section: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.xl,
+      padding: theme.spacing.base,
+      marginBottom: theme.spacing.base,
+      ...theme.shadows.sm,
+    },
+    sectionTitle: {
+      fontSize: theme.typography.label.fontSize,
+      fontWeight: theme.typography.label.fontWeight,
+      color: theme.colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: theme.typography.label.letterSpacing,
+      marginBottom: theme.spacing.md,
+    },
+
+    /* Items */
+    itemRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: theme.spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.borderSubtle,
+    },
+    itemInfo: {
+      flex: 1,
+      marginRight: theme.spacing.sm,
+    },
+    itemName: {
+      fontSize: theme.typography.body.fontSize,
+      fontWeight: '600',
+      color: theme.colors.text,
+      marginBottom: theme.spacing.xxs,
+    },
+    itemQty: {
+      fontSize: theme.typography.caption.fontSize,
+      color: theme.colors.textPlaceholder,
+    },
+    itemPrice: {
+      fontSize: theme.typography.body.fontSize,
+      fontWeight: '600',
+    },
+
+    /* Mini card preview */
+    miniCard: {
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.base,
+      paddingTop: theme.spacing.lg,
+    },
+    miniCardRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    miniChip: {
+      width: 28,
+      height: 20,
+      borderRadius: 3,
+      backgroundColor: '#FFD700',
+    },
+    miniBrand: {
+      fontSize: theme.typography.body.fontSize,
+      fontWeight: '800',
+      color: 'rgba(255,255,255,0.9)',
+      letterSpacing: 1,
+    },
+    miniCardNumber: {
+      fontSize: theme.typography.h3.fontSize,
+      fontWeight: '600',
+      color: '#fff',
+      letterSpacing: 1.5,
+      marginVertical: theme.spacing.sm,
+      fontVariant: ['tabular-nums'],
+    },
+    miniCardName: {
+      fontSize: theme.typography.caption.fontSize,
+      fontWeight: '600',
+      color: 'rgba(255,255,255,0.85)',
+      flex: 1,
+      marginRight: theme.spacing.sm,
+    },
+    miniCardExpiry: {
+      fontSize: theme.typography.caption.fontSize,
+      fontWeight: '600',
+      color: 'rgba(255,255,255,0.85)',
+    },
+
+    /* Total */
+    totalSection: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.xl,
+      padding: theme.spacing.base,
+      marginBottom: theme.spacing.base,
+      ...theme.shadows.sm,
+    },
+    totalRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    totalLabel: {
+      fontSize: theme.typography.bodyBold.fontSize,
+      fontWeight: theme.typography.bodyBold.fontWeight,
+      color: theme.colors.text,
+    },
+    totalAmount: {
+      fontSize: 22,
+      fontWeight: '700',
+    },
+
+    /* Security */
+    securityRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: theme.spacing.xs,
+    },
+    securityIcon: {
+      fontSize: theme.typography.body.fontSize,
+      fontWeight: '700',
+      color: theme.colors.success,
+      marginRight: theme.spacing.sm,
+    },
+    securityText: {
+      fontSize: theme.typography.caption.fontSize,
+      color: theme.colors.textSecondary,
+      flex: 1,
+      lineHeight: theme.typography.caption.lineHeight,
+    },
+
+    /* Bottom bar */
+    bottomBar: {
+      padding: theme.spacing.base,
+      paddingBottom: 32,
+      backgroundColor: theme.colors.background,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
+    payButton: {
+      backgroundColor: theme.colors.primary,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing.lg,
+      alignItems: 'center',
+    },
+    disabledButton: {
+      backgroundColor: theme.colors.primaryLight,
+    },
+    payButtonText: {
+      color: theme.colors.textOnPrimary,
+      fontSize: 17,
+      fontWeight: '700',
+    },
+    processingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+  });
