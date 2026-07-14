@@ -20,7 +20,7 @@ import { clearCart } from '../store/slices/cartSlice';
 import { PriceTag } from '../components/PriceTag';
 import { Toast } from '../components/Toast';
 import { getApiClientInstance } from '../services/api';
-import { processPayment } from '../services/paymentService';
+import { processPayment, type PaymentItem } from '../services/paymentService';
 import { selectTotalCents, selectGetProduct } from '../store/selectors';
 import { getBrandName, CardBrand } from '../services/cardDetection';
 import { useTheme, Theme } from '../theme/ThemeContext';
@@ -103,17 +103,26 @@ export function PaymentSummaryScreen({
         return;
       }
 
+      // B2: Capture sensitive data BEFORE clearCardInfo()
+      const capturedCardLastFour = routeCardNumber.slice(-4) ?? checkout.cardInfo?.lastFour ?? '';
+      const capturedCardholderName = checkout.cardInfo?.cardholderName ?? '';
+
       const api = getApiClientInstance();
       const cardInfo = {
         number: routeCardNumber,
         expiry: routeCardExpiry,
         cvc: routeCardCvc,
-        cardholderName,
+        cardholderName: capturedCardholderName,
       };
-      const items = cartItems.map((ci) => ({
-        productId: ci.productId,
-        quantity: ci.quantity,
-      }));
+      const items: PaymentItem[] = cartItems.map((ci) => {
+        const product = getProduct(ci.productId);
+        return {
+          productId: ci.productId,
+          quantity: ci.quantity,
+          unitPrice: product?.price ?? 0,
+          productName: product?.name ?? 'Unknown',
+        };
+      });
 
       const { transaction, token } = await processPayment(
         { items, cardInfo, totalCents },

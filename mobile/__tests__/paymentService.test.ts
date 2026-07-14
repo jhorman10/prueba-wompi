@@ -1,5 +1,5 @@
-import { processPayment } from '../src/services/paymentService';
-import { ApiClient, ChargeItem } from '../src/services/api';
+import { processPayment, PaymentItem } from '../src/services/paymentService';
+import { ApiClient } from '../src/services/api';
 import type { TransactionRecord } from '../src/store/slices/transactionsSlice';
 
 function makeMockApi(
@@ -21,9 +21,9 @@ const cardInfo = {
   cardholderName: 'John Doe',
 };
 
-const items: ChargeItem[] = [
-  { productId: 'prod-1', quantity: 2 },
-  { productId: 'prod-2', quantity: 1 },
+const items: PaymentItem[] = [
+  { productId: 'prod-1', quantity: 2, unitPrice: 10000, productName: 'Product 1' },
+  { productId: 'prod-2', quantity: 1, unitPrice: 5000, productName: 'Product 2' },
 ];
 
 describe('processPayment (A2)', () => {
