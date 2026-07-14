@@ -71,8 +71,12 @@ export async function processPayment(
     id: rawTransaction.id,
     status: rawTransaction.status,
     amount: rawTransaction.totalAmount ?? totalCents,
-    productId: items[0]!.productId,
-    quantity: items[0]!.quantity,
+    items: items.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      productName: item.productName ?? 'Unknown',
+    })),
     createdAt: new Date().toISOString(),
   };
 

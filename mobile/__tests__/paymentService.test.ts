@@ -21,7 +21,7 @@ const cardInfo = {
   cardholderName: 'John Doe',
 };
 
-const items: PaymentItem[] = [
+const items = [
   { productId: 'prod-1', quantity: 2, unitPrice: 10000, productName: 'Product 1' },
   { productId: 'prod-2', quantity: 1, unitPrice: 5000, productName: 'Product 2' },
 ];
@@ -52,7 +52,10 @@ describe('processPayment (A2)', () => {
     });
     expect(api.chargePayment).toHaveBeenCalledWith({
       token: 'tok_123',
-      items,
+      items: [
+        { productId: 'prod-1', quantity: 2, unitPrice: 10000, productName: 'Product 1' },
+        { productId: 'prod-2', quantity: 1, unitPrice: 5000, productName: 'Product 2' },
+      ],
       idempotencyKey: 'idem_456',
       cardLastFour: '4242',
       cardholderName: 'John Doe',
@@ -60,6 +63,7 @@ describe('processPayment (A2)', () => {
     expect(result.token).toBe('tok_123');
     expect(result.transaction.id).toBe('tx-1');
     expect(result.transaction.amount).toBe(199998);
+    expect(result.transaction.items).toHaveLength(2);
   });
 
   it('falls back to totalCents when the charge omits totalAmount', async () => {
@@ -72,6 +76,9 @@ describe('processPayment (A2)', () => {
         transaction: {
           id: 'tx-2',
           status: 'PENDING',
+          items: [],
+          amount: 0,
+          createdAt: new Date().toISOString(),
         } as TransactionRecord,
       }),
     });
@@ -79,15 +86,15 @@ describe('processPayment (A2)', () => {
     const result = await processPayment({ items, cardInfo, totalCents: 5000 }, api);
 
     expect(result.transaction.amount).toBe(5000);
-    expect(result.transaction.productId).toBe('prod-1');
-    expect(result.transaction.quantity).toBe(2);
+    expect(result.transaction.items).toHaveLength(2);
+    expect(result.transaction.items[0].productId).toBe('prod-1');
+    expect(result.transaction.items[0].quantity).toBe(2);
   });
 
   it('propagates tokenize errors without charging', async () => {
     const api = makeMockApi({
-      tokenizeCard: jest
-        .fn()
-        .mockRejectedValue(new Error('Gateway timeout')),
+      tokenizeCard: jest.fn().mockRejectedValue(new Error('Gateway timeout')),
+      chargePayment: jest.fn(),
     });
 
     await expect(
@@ -102,9 +109,7 @@ describe('processPayment (A2)', () => {
         token: 'tok_y',
         idempotencyKey: 'idem_y',
       }),
-      chargePayment: jest
-        .fn()
-        .mockRejectedValue(new Error('Charge declined')),
+      chargePayment: jest.fn().mockRejectedValue(new Error('Charge declined')),
     });
 
     await expect(
