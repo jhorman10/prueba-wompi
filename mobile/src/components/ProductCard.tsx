@@ -4,6 +4,20 @@ import { useTheme } from '../theme/ThemeContext';
 import type { Theme } from '../theme/ThemeContext';
 import { Product } from '../store/slices/productsSlice';
 import { PriceTag } from './PriceTag';
+import { API_BASE_URL } from '../config/api';
+
+/**
+ * Resolve a relative product image URL to an absolute URL using the API origin.
+ * Backend serves images from the same host at /images/<name>.png
+ */
+function resolveImageUrl(imageUrl: string): string {
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+  // Strip /api from the base URL to get the origin
+  const origin = API_BASE_URL.replace(/\/api\/?$/, '');
+  return `${origin}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+}
 
 // cache: 'force-cache' (iOS) keeps the product image cached after first load.
 // On Android the prop is a harmless no-op; no external dependency required.
@@ -28,7 +42,7 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
     >
       {product.imageUrl ? (
         <Image
-          source={{ uri: product.imageUrl, cache: 'force-cache' }}
+          source={{ uri: resolveImageUrl(product.imageUrl), cache: 'force-cache' }}
           style={styles.image}
           resizeMode="cover"
         />
