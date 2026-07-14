@@ -22,14 +22,15 @@ import { Toast } from '../components/Toast';
 import { getApiClientInstance } from '../services/api';
 import { processPayment, type PaymentItem } from '../services/paymentService';
 import { selectTotalCents, selectGetProduct } from '../store/selectors';
-import { getBrandName, CardBrand } from '../services/cardDetection';
+import { getBrandName, getBrandLogo, CardBrand } from '../services/cardDetection';
 import { useTheme, Theme } from '../theme/ThemeContext';
+import { RootStackParamList } from '../navigation/types';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+type PaymentSummaryScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'PaymentSummary'>;
 
 interface PaymentSummaryScreenProps {
-  navigation?: {
-    navigate: (screen: string, params?: object) => void;
-    goBack?: () => void;
-  };
+  navigation?: PaymentSummaryScreenNavigationProp;
   route?: {
     params: {
       cardNumber: string;

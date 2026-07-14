@@ -14,6 +14,19 @@ import { Product } from '../store/slices/productsSlice';
 import { PriceTag } from '../components/PriceTag';
 import { useTheme, Theme } from '../theme/ThemeContext';
 import { API_BASE_URL } from '../config/api';
+import { RootStackParamList } from '../navigation/types';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+type SelectProductScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SelectProduct'>;
+
+interface SelectProductScreenProps {
+  navigation: SelectProductScreenNavigationProp;
+  route: {
+    params: {
+      product: Product;
+    };
+  };
+}
 
 /**
  * Resolve a relative product image URL to an absolute URL.
@@ -24,17 +37,6 @@ function resolveImageUrl(imageUrl: string): string {
   }
   const origin = API_BASE_URL.replace(/\/api\/?$/, '');
   return `${origin}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
-}
-
-interface SelectProductScreenProps {
-  navigation?: {
-    navigate: (screen: string) => void;
-  };
-  route?: {
-    params: {
-      product: Product;
-    };
-  };
 }
 
 /**
@@ -66,7 +68,7 @@ export function SelectProductScreen({
     try {
       await new Promise<void>((resolve) => setTimeout(resolve, 0));
       dispatch(addItem({ productId: product.id, quantity }));
-      navigation?.navigate('Checkout');
+      navigation.navigate('Checkout');
     } finally {
       setAdding(false);
     }
