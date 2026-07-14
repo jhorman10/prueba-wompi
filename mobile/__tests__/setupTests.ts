@@ -1,4 +1,4 @@
-// Global Jest setup for all tests
+import React, { ReactNode } from 'react';
 
 // Mock ThemeContext globally for all component tests
 jest.mock('../src/theme/ThemeContext', () => {
@@ -47,7 +47,7 @@ jest.mock('../src/theme/ThemeContext', () => {
   };
 
   return {
-    ThemeProvider: ({ children }) => children,
+    ThemeProvider: ({ children }: { children: ReactNode }) => children,
     useTheme: () => mockTheme,
     useDarkMode: () => ({ isDark: false, toggleDarkMode: jest.fn() }),
   };
@@ -71,16 +71,16 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 
 // Mock react-native-safe-area-context
 jest.mock('react-native-safe-area-context', () => ({
-  SafeAreaProvider: ({ children }) => children,
-  SafeAreaView: ({ children }) => children,
+  SafeAreaProvider: ({ children }: { children: ReactNode }) => children,
+  SafeAreaView: ({ children }: { children: ReactNode }) => children,
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
 // Mock react-native-screens
 jest.mock('react-native-screens', () => ({
   enableScreens: jest.fn(),
-  Screen: ({ children }) => children,
-  ScreenStack: ({ children }) => children,
+  Screen: ({ children }: { children: ReactNode }) => children,
+  ScreenStack: ({ children }: { children: ReactNode }) => children,
 }));
 
 // Silence console.warn in tests

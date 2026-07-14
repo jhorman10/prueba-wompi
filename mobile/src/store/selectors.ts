@@ -3,19 +3,22 @@ import { RootState } from './store';
 import { Product } from './slices/productsSlice';
 import { CartItem } from './slices/cartSlice';
 
-const selectCartItems = (state: RootState): CartItem[] =>
-  state.cart?.items ?? [];
+const selectCartItems = (state: RootState): CartItem[] => state.cart?.items ?? [];
 
 const selectProducts = (state: RootState): Product[] => state.products.items;
 
-/** Total number of units across all cart lines (memoized). */
+export const selectProductById = createSelector(
+  [selectProducts, (_: RootState, productId: string) => productId],
+  (products: Product[], productId: string): Product | undefined =>
+    products.find((p) => p.id === productId),
+);
+
 export const selectCartCount = createSelector(
   [selectCartItems],
   (items: CartItem[]) =>
     items.reduce((sum, item) => sum + item.quantity, 0),
 );
 
-/** Total order value in cents, derived from cart × product prices (memoized). */
 export const selectTotalCents = createSelector(
   [selectCartItems, selectProducts],
   (items: CartItem[], products: Product[]) =>
@@ -25,9 +28,29 @@ export const selectTotalCents = createSelector(
     }, 0),
 );
 
-/** Factory selector returning a memoized product lookup by id. */
-export const selectGetProduct = createSelector(
-  [selectProducts],
-  (products: Product[]) => (productId: string): Product | undefined =>
-    products.find((p) => p.id === productId),
+export const selectCartItemsWithProducts = createSelector(
+  [selectCartItems, selectProducts],
+  (items: CartItem[], products: Product[]) =>
+    items.map((item) => {
+      const product = products.find((p) => p.id === item.productId);
+      return {
+        ...item,
+        productName: product?.name ?? 'Unknown',
+        unitPrice: product?.price ?? 0,
+        imageUrl: product?.imageUrl ?? '',
+        stock: product?.stock ?? 0,
+      };
+    },
+),
+  );
+
+export const selectIsCartEmpty = createSelector(
+  [selectCartItems],
+  (items: CartItem[]) => items.length === 0,
+);
+
+export const selectHasOutOfStockItems = createSelector(
+  [selectCartItemsWithProducts],
+  (items) =>
+    items.some((item) => item.stock === 0 || item.quantity > item.stock),
 );

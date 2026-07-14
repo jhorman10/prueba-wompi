@@ -2,10 +2,11 @@ import React, { useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, Pressable } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
+import { Product } from '../store/slices/productsSlice';
 import { CartItem } from '../components/CartItem';
 import { PriceTag } from '../components/PriceTag';
 import { removeItem } from '../store/slices/cartSlice';
-import { selectTotalCents, selectGetProduct } from '../store/selectors';
+import { selectTotalCents } from '../store/selectors';
 import { useTheme, Theme } from '../theme/ThemeContext';
 import { RootStackParamList } from '../navigation/types';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -25,7 +26,12 @@ export function CheckoutScreen({ navigation }: CheckoutScreenProps) {
   const { colors } = theme;
   const dispatch = useDispatch<AppDispatch>();
   const cartItems = useSelector((state: RootState) => state.cart?.items ?? []);
-  const getProduct = useSelector(selectGetProduct);
+  const productsById = useSelector((state: RootState) => 
+    state.products.items.reduce((acc: Record<string, Product>, product: Product) => {
+      acc[product.id] = product;
+      return acc;
+    }, {})
+  );
   const totalCents = useSelector(selectTotalCents);
 
   const handleProceedToPayment = useCallback(() => {
@@ -34,7 +40,7 @@ export function CheckoutScreen({ navigation }: CheckoutScreenProps) {
 
   const renderCartItem = useCallback(
     ({ item }: { item: (typeof cartItems)[number] }) => {
-      const product = getProduct(item.productId);
+      const product = productsById[item.productId];
       return (
         <CartItem
           productName={product?.name ?? 'Unknown Product'}
@@ -44,7 +50,7 @@ export function CheckoutScreen({ navigation }: CheckoutScreenProps) {
         />
       );
     },
-    [getProduct, dispatch],
+    [dispatch],
   );
 
   if (cartItems.length === 0) {
