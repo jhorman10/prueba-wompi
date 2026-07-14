@@ -13,9 +13,16 @@ export interface ChargeItem {
   quantity: number;
 }
 
+export interface PaymentItem {
+  productId: string;
+  quantity: number;
+  unitPrice: number;
+  productName?: string;
+}
+
 export interface ChargeRequest {
   token: string;
-  items: ChargeItem[];
+  items: PaymentItem[];
   idempotencyKey: string;
   cardLastFour: string;
   cardholderName: string;

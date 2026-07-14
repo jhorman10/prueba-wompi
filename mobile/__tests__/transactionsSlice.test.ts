@@ -11,24 +11,26 @@ describe('transactionsSlice', () => {
     lastTransaction: null,
   };
 
+  const sampleTxn: TransactionRecord = {
+    id: 'txn_1',
+    status: 'COMPLETED',
+    amount: 2999,
+    items: [
+      { productId: 'p1', quantity: 1, unitPrice: 2999, productName: 'Product 1' },
+    ],
+    createdAt: '2024-01-15T10:00:00Z',
+  };
+
   it('returns initial state', () => {
     const state = transactionsReducer(undefined, { type: 'unknown' });
     expect(state).toEqual(initialState);
   });
 
   it('adds a transaction to history and sets as last', () => {
-    const txn: TransactionRecord = {
-      id: 'txn_1',
-      status: 'COMPLETED',
-      amount: 2999,
-      productId: 'p1',
-      quantity: 1,
-      createdAt: '2024-01-15T10:00:00Z',
-    };
-    const state = transactionsReducer(initialState, addTransaction(txn));
+    const state = transactionsReducer(initialState, addTransaction(sampleTxn));
     expect(state.history).toHaveLength(1);
-    expect(state.history[0]).toEqual(txn);
-    expect(state.lastTransaction).toEqual(txn);
+    expect(state.history[0]).toEqual(sampleTxn);
+    expect(state.lastTransaction).toEqual(sampleTxn);
   });
 
   it('appends to existing history', () => {
@@ -36,16 +38,14 @@ describe('transactionsSlice', () => {
       id: 'txn_1',
       status: 'COMPLETED',
       amount: 1000,
-      productId: 'p1',
-      quantity: 1,
+      items: [{ productId: 'p1', quantity: 1, unitPrice: 1000, productName: 'Product 1' }],
       createdAt: '2024-01-15T10:00:00Z',
     };
     const newTxn: TransactionRecord = {
       id: 'txn_2',
       status: 'FAILED',
       amount: 5000,
-      productId: 'p2',
-      quantity: 2,
+      items: [{ productId: 'p2', quantity: 2, unitPrice: 2500, productName: 'Product 2' }],
       createdAt: '2024-01-16T10:00:00Z',
     };
     const stateWithHistory: TransactionsState = {
@@ -60,17 +60,9 @@ describe('transactionsSlice', () => {
   });
 
   it('clears last transaction', () => {
-    const txn: TransactionRecord = {
-      id: 'txn_1',
-      status: 'COMPLETED',
-      amount: 2999,
-      productId: 'p1',
-      quantity: 1,
-      createdAt: '2024-01-15T10:00:00Z',
-    };
     const stateWithTxn: TransactionsState = {
-      history: [txn],
-      lastTransaction: txn,
+      history: [sampleTxn],
+      lastTransaction: sampleTxn,
     };
     const state = transactionsReducer(stateWithTxn, clearLastTransaction());
     expect(state.lastTransaction).toBeNull();

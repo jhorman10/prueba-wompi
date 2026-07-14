@@ -6,6 +6,7 @@ import {
   Pressable,
   ScrollView,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
@@ -16,15 +17,17 @@ import {
   isValidLuhn,
   formatCardNumber,
   getBrandName,
+  getBrandLogo,
   CardBrand,
 } from '../services/cardDetection';
 import { useTheme, Theme } from '../theme/ThemeContext';
+import { RootStackParamList } from '../navigation/types';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+type CardInfoScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'CardInfo'>;
 
 interface CardInfoScreenProps {
-  navigation?: {
-    navigate: (screen: string, params?: object) => void;
-    goBack?: () => void;
-  };
+  navigation: CardInfoScreenNavigationProp;
 }
 
 interface CardFormErrors {
@@ -82,6 +85,7 @@ export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
 
   const brand: CardBrand = number ? detectBrand(number) : 'unknown';
   const brandName = getBrandName(brand);
+  const brandLogo = getBrandLogo(brand);
   const brandColor = getBrandColor(brand);
   const displayNumber = formatCardNumber(number);
 
@@ -132,8 +136,10 @@ export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
     const expiryError = validateExpiry(expiry);
     if (expiryError) newErrors.expiry = expiryError;
 
-    if (cvc.length < 3) {
-      newErrors.cvc = 'Invalid CVC';
+    // M9: Amex uses 4-digit CVC, others use 3
+    const requiredCvcLength = brand === 'amex' ? 4 : 3;
+    if (cvc.length < requiredCvcLength) {
+      newErrors.cvc = `Invalid CVC (${requiredCvcLength} digits required)`;
     }
 
     setErrors(newErrors);
@@ -189,9 +195,9 @@ export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
             <Text style={styles.cardValue}>{expiry || 'MM/YY'}</Text>
           </View>
         </View>
-        {brandName && (
+        {brandLogo && (
           <View style={styles.cardBrandBadge}>
-            <Text style={styles.cardBrandText}>{brandName}</Text>
+            <Image source={brandLogo} style={styles.brandLogo} />
           </View>
         )}
       </View>
@@ -318,6 +324,11 @@ const getStyles = (theme: Theme) =>
       position: 'absolute',
       top: 16,
       right: theme.spacing.lg,
+    },
+    brandLogo: {
+      width: 40,
+      height: 24,
+      resizeMode: 'contain',
     },
     cardBrandText: {
       fontSize: 16,

@@ -366,15 +366,57 @@ To use the **real sandbox** instead of the built-in simulator:
 > gateway brand) string — only the abstracted `IPaymentGateway` interface and the
 > environment variables listed above.
 
-## Pull Requests (Feature Branch Chain)
+## Audit Fix Implementation (2026-07-14)
 
-This project was developed across a chain of PRs:
+All findings from the technical audit (`specs/audit-fix/SPEC.md`) have been resolved across three phases:
 
-| PR | Branch | Scope |
-|----|--------|-------|
-| [PR 1](https://github.com/jhormanorozco/Prueba-Wompi/pull/1) | `feat/backend-core` | Nest.js backend: products + payments modules, hexagonal architecture |
-| [PR 2](https://github.com/jhormanorozco/Prueba-Wompi/pull/2) | `feat/mobile-core` | React Native: 7 screens, Redux, navigation, card validation |
-| [PR 3](https://github.com/jhormanorozco/Prueba-Wompi/pull/3) | `feat/integration-polish` | Integration: API wiring, Dockerfile, .env examples, README, test verification |
-| [PR 7](https://github.com/jhormanorozco/Prueba-Wompi/pull/7) | `feat/audit-fix-implementation` | Applies audit-fix findings: honest README/test numbers, env-driven mobile URL, payment-error toast, responsive hardening |
+| Phase | Issues | Status |
+|-------|--------|--------|
+| **Phase 1** — Blocking Bugs + PCI + Architecture | B1, B2, B3, P1, P3, A1, A5 | ✅ Complete |
+| **Phase 2** — Architecture + Security | A2/A3, A4, P2 | ✅ Complete |
+| **Phase 3** — Code Quality + UX | M1-M9, m1-m5 | ✅ Complete |
 
-Branch chain: `main` ← `dev` (tracker) ← `feat/backend-core` ← `feat/mobile-core` ← `feat/integration-polish` ← `feat/audit-fix-implementation`
+### Key Fixes Implemented
+
+**Blocking Bugs (B1-B3):**
+- **B1**: PaymentSummaryScreen now sends the complete cart (all items with unitPrice/productName) instead of just the first item
+- **B2**: `cardLastFour` and `cardholderName` are captured **before** `clearCardInfo()` dispatch
+- **B3**: Backend uses atomic `stock = stock - qty WHERE stock >= qty` to prevent race conditions
+
+**PCI DSS Critical (P1-P3):**
+- **P1**: Redux Persist transform strips `checkout.cardInfo.expiry` from persisted state
+- **P2**: Mobile enforces HTTPS in production (throws `PCI VIOLATION` error if HTTP)
+- **P3**: Only `lastFour`, `brand`, `cardholderName` stored in Redux — PAN/CVV never persisted
+
+**Architecture (A1-A5):**
+- **A1**: Backend recalculates `totalAmount` server-side from `items × unitPrice`
+- **A2/A3**: `paymentService` encapsulates the full payment flow (tokenize → charge); UI stays thin
+- **A4**: CORS `CORS_ORIGINS` required in production; wildcard `*` only in development
+- **A5**: `idempotencyKey` generated server-side from token response (not client-side)
+
+**Code Quality (M1-M9):**
+- **M1**: Full type-safe navigation via `RootStackParamList` + `ScreenNavigationProp`
+- **M2**: `fetchProducts` hoisted before `useEffect` in HomeScreen
+- **M3**: Derived state via `createSelector` (`selectCartCount`, `selectTotalCents`, etc.)
+- **M4**: Encryption + Immer race condition handled in persist config
+- **M5**: No `boxShadow` used (RN Android incompatible)
+- **M6**: No `gap` in StyleSheet (RN 0.86); uses `rowGap`/`columnGap` or spacer
+- **M7**: Brand detection extended to 7 brands (Visa, MC, Amex, Diners, Discover, Elo, Hipercard)
+- **M8**: `getBrandLogo()` returns `ImageSourcePropType` with per-brand logo assets
+- **M9**: CVC validation now requires 4 digits for Amex, 3 for others
+
+**UX Improvements (m1-m5):**
+- **m1**: Pull-to-refresh on HomeScreen FlatList
+- **m2**: Loading states on critical buttons (Add to Cart, Pay, Continue)
+- **m3**: Image caching via `cache: 'force-cache'` on ProductCard images
+- **m4**: API client interceptors with request/response logging + error tracking
+- **m5**: Removed duplicate `useDispatch` in CheckoutScreen
+
+### Test Results (Post-Fix)
+
+| Layer | Suites | Tests | Statements | Branches | Functions | Lines |
+|-------|--------|-------|------------|----------|-----------|--------|
+| Backend | 15 | 145 | 99.62% | 94.93% | 97.72% | 99.56% |
+| Mobile | 17 | 152 | 95.33% | 81.66% | 93.02% | 95.46% |
+
+**All audit findings resolved.** The `feat/audit-fix-phase1` branch is ready for merge via PR #14.

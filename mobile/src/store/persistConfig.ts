@@ -1,9 +1,48 @@
+import { createTransform } from 'redux-persist';
 import EncryptedStorage from 'react-native-encrypted-storage';
 import { createEncryptor } from '../services/encryption';
 
 // Immer-internals cleanup only. Encryption-at-rest is provided by the
 // EncryptedStorage engine below, so this transform performs no storage writes.
 const encryptor = createEncryptor();
+
+/**
+ * Transform that strips PCI-sensitive fields from the checkout slice before
+ * persisting to storage.
+ *
+ * PCI DSS Requirement 3.2: "Do not store sensitive authentication data after
+ * authorization (even if encrypted)." The `expiry` field in `CardInfo` is
+ * marked as "only stored temporarily for re-display, cleared after
+ * tokenization" — but it persists unless we strip it at persistence time.
+ *
+ * We keep `cardInfo` in Redux for UX during the checkout flow (re-display
+ * last four digits, brand, cardholder name), but we strip `expiry` before
+ * it ever hits encrypted storage.
+ */
+const stripSensitiveCheckoutData = createTransform(
+  // transform inbound state before persisting to storage
+  (inboundState: any, key: string | number) => {
+    if (key !== 'checkout') {
+      return inboundState;
+    }
+    const { cardInfo, ...rest } = inboundState;
+    if (!cardInfo) {
+      return inboundState;
+    }
+    // Strip expiry (PCI-sensitive); keep lastFour, brand, cardholderName for UX
+    const { expiry, ...safeCardInfo } = cardInfo;
+    return {
+      ...rest,
+      cardInfo: safeCardInfo,
+    };
+  },
+  // transform outbound state after rehydrating from storage
+  (outboundState: any, key: string | number) => {
+    // No transformation needed on rehydrate — we want the stored safe state
+    return outboundState;
+  },
+  { whitelist: ['checkout'] },
+);
 
 /**
  * Defensive storage adapter.
@@ -58,5 +97,5 @@ export const persistConfig = {
   version: 3,
   storage: safeStorage,
   whitelist: ['cart', 'checkout', 'transactions'],
-  transforms: [encryptor],
+  transforms: [stripSensitiveCheckoutData, encryptor],
 };

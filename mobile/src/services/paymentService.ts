@@ -1,4 +1,4 @@
-import { ApiClient, ChargeItem } from './api';
+import { ApiClient } from './api';
 import type { TransactionRecord } from '../store/slices/transactionsSlice';
 
 export interface PaymentCardInfo {
@@ -8,8 +8,15 @@ export interface PaymentCardInfo {
   cardholderName: string;
 }
 
+export interface PaymentItem {
+  productId: string;
+  quantity: number;
+  unitPrice: number;
+  productName?: string;
+}
+
 export interface PaymentInput {
-  items: ChargeItem[];
+  items: PaymentItem[];
   cardInfo: PaymentCardInfo;
   totalCents: number;
 }
@@ -17,6 +24,7 @@ export interface PaymentInput {
 export interface PaymentResult {
   transaction: TransactionRecord;
   token: string;
+  items: PaymentItem[];
 }
 
 /**
@@ -42,9 +50,16 @@ export async function processPayment(
   // Server-generated idempotency key (A5) — never reuse a client-generated one.
   const idempotencyKey = tokenResult.idempotencyKey;
 
+  const chargeItems = items.map((item) => ({
+    productId: item.productId,
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
+    productName: item.productName,
+  }));
+
   const chargeResponse = (await api.chargePayment({
     token,
-    items,
+    items: chargeItems,
     idempotencyKey,
     cardLastFour: cardInfo.number.slice(-4),
     cardholderName: cardInfo.cardholderName,
@@ -56,10 +71,14 @@ export async function processPayment(
     id: rawTransaction.id,
     status: rawTransaction.status,
     amount: rawTransaction.totalAmount ?? totalCents,
-    productId: items[0]!.productId,
-    quantity: items[0]!.quantity,
+    items: items.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      productName: item.productName ?? 'Unknown',
+    })),
     createdAt: new Date().toISOString(),
   };
 
-  return { transaction, token };
+  return { transaction, token, items };
 }

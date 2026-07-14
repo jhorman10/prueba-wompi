@@ -1,7 +1,7 @@
 import {
   selectCartCount,
   selectTotalCents,
-  selectGetProduct,
+  selectProductById,
 } from '../src/store/selectors';
 import { RootState } from '../src/store/store';
 import { CartState } from '../src/store/slices/cartSlice';
@@ -79,25 +79,24 @@ describe('selectTotalCents', () => {
   });
 });
 
-describe('selectGetProduct', () => {
-  it('returns a finder that locates products by id', () => {
+describe('selectProductById', () => {
+  it('returns a selector that locates products by id', () => {
     const state = makeState({}, { items: [prod1, prod2] });
-    const find = selectGetProduct(state);
-    expect(find('p1')).toBe(prod1);
-    expect(find('p2')).toBe(prod2);
-    expect(find('nope')).toBeUndefined();
+    expect(selectProductById(state, 'p1')).toBe(prod1);
+    expect(selectProductById(state, 'p2')).toBe(prod2);
+    expect(selectProductById(state, 'nope')).toBeUndefined();
   });
 
   it('memoizes the finder so it is stable for the same products', () => {
     const state = makeState({}, { items: [prod1] });
-    const a = selectGetProduct(state);
-    const b = selectGetProduct(state);
+    const a = selectProductById(state, 'p1');
+    const b = selectProductById(state, 'p1');
     expect(a).toBe(b);
   });
 
-  it('produces a new finder when the catalog changes', () => {
-    const a = selectGetProduct(makeState({}, { items: [prod1] }));
-    const b = selectGetProduct(makeState({}, { items: [prod2] }));
+  it('produces a new result when the catalog changes', () => {
+    const a = selectProductById(makeState({}, { items: [prod1] }), 'p1');
+    const b = selectProductById(makeState({}, { items: [prod2] }), 'p2');
     expect(a).not.toBe(b);
   });
 });

@@ -10,6 +10,7 @@ import {
   BackHandler,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
 import { Product, setProducts, setLoading, setError } from '../store/slices/productsSlice';
@@ -17,11 +18,12 @@ import { ProductCard } from '../components/ProductCard';
 import { getApiClientInstance } from '../services/api';
 import { selectCartCount } from '../store/selectors';
 import { useTheme, Theme } from '../theme/ThemeContext';
+import { RootStackParamList } from '../navigation/types';
+
+type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 interface HomeScreenProps {
-  navigation?: {
-    navigate: (screen: string, params?: Record<string, unknown>) => void;
-  };
+  navigation: HomeScreenNavigationProp;
 }
 
 /**
@@ -38,6 +40,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   const cartCount = useSelector(selectCartCount);
   const [refreshing, setRefreshing] = useState(false);
 
+  // M2: fetchProducts defined before useEffect
   const fetchProducts = useCallback(async () => {
     dispatch(setLoading(true));
     try {
@@ -85,7 +88,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   }, [stackNavigation, colors.tint]);
 
   const handleSelectProduct = useCallback((product: Product) => {
-    navigation?.navigate('SelectProduct', { product });
+    navigation.navigate('SelectProduct', { product });
   }, [navigation]);
 
   const renderProductItem = useCallback(

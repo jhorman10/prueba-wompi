@@ -1,15 +1,17 @@
 import React, { useLayoutEffect } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, Platform, BackHandler } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store/store';
 import { PriceTag } from '../components/PriceTag';
 import { useTheme, Theme } from '../theme/ThemeContext';
+import { RootStackParamList } from '../navigation/types';
+
+type TransactionStatusScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'TransactionStatus'>;
 
 interface TransactionStatusScreenProps {
-  navigation?: {
-    navigate: (screen: string, params?: object) => void;
-  };
+  navigation: TransactionStatusScreenNavigationProp;
   route?: {
     params: {
       transaction: {
@@ -36,7 +38,7 @@ export function TransactionStatusScreen({
   );
 
   const transaction = route?.params?.transaction ?? lastTransaction;
-  const stackNavigation = useNavigation<any>();
+  const stackNavigation = useNavigation<TransactionStatusScreenNavigationProp>();
 
   useLayoutEffect(() => {
     stackNavigation.setOptions({

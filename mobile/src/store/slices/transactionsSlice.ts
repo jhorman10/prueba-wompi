@@ -1,11 +1,17 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
+export interface TransactionItem {
+  productId: string;
+  quantity: number;
+  unitPrice: number;
+  productName: string;
+}
+
 export interface TransactionRecord {
   id: string;
   status: string;
   amount: number;
-  productId: string;
-  quantity: number;
+  items: TransactionItem[];
   createdAt: string;
 }
 

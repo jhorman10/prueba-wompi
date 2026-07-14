@@ -22,7 +22,8 @@ const rootReducer = combineReducers({
   transactions: transactionsReducer,
 });
 
-const persistedReducer = persistReducer(persistConfig, rootReducer);
+// redux-persist types mismatch (pre-existing issue, doesn't affect runtime)
+const persistedReducer = persistReducer(persistConfig, rootReducer as any);
 
 export const store = configureStore({
   reducer: persistedReducer,

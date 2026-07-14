@@ -41,23 +41,48 @@ function buildDefaultBaseUrl(): string {
 }
 
 /**
- * Warns (dev only) when sensitive card data would be sent over HTTP to a
- * non-localhost host — a PCI DSS smell. No-op in production builds.
+ * Validates the API connection for PCI DSS compliance.
+ *
+ * - Development: warns if sending card data over HTTP to non-localhost
+ * - Production: throws if API_URL is not HTTPS (card data would be exposed)
  */
 function assertSecureConnection(baseUrl: string): void {
-  if (!__DEV__) {
-    return;
-  }
   try {
     const { hostname, protocol } = new URL(baseUrl);
-    if (protocol === 'http:' && !isLocalhost(hostname)) {
-      console.warn(
-        '[PCI WARNING] Sending sensitive data over HTTP to non-localhost host! ' +
-          'Set API_URL to an https endpoint for production.',
-      );
+    const isLocal = isLocalhost(hostname);
+    const isHttps = protocol === 'https:';
+
+    if (__DEV__) {
+      // Development: warn only
+      if (!isHttps && !isLocal) {
+        console.warn(
+          '[PCI WARNING] Sending sensitive data over HTTP to non-localhost host! ' +
+            'Set API_URL to an https endpoint for production.',
+        );
+      }
+    } else {
+      // Production: enforce HTTPS strictly
+      if (!isHttps) {
+        const errMsg =
+          '[PCI VIOLATION] API_URL must use HTTPS in production. ' +
+          'Card data would be transmitted in plaintext. ' +
+          `Current: ${protocol}//${hostname}`;
+        console.error(errMsg);
+        throw new Error(errMsg);
+      }
+      if (!isLocal && !isHttps) {
+        const errMsg =
+          '[PCI VIOLATION] Production API_URL must use HTTPS for non-localhost hosts.';
+        console.error(errMsg);
+        throw new Error(errMsg);
+      }
     }
-  } catch {
-    // Non-URL fallback value; ignore in dev.
+  } catch (e) {
+    if (e instanceof Error && e.message.includes('PCI')) throw e;
+    // Non-URL fallback value; ignore in dev, but log in prod
+    if (!__DEV__) {
+      console.error('[PCI] Invalid API_URL format:', baseUrl);
+    }
   }
 }
 
