@@ -13,6 +13,18 @@ import { addItem } from '../store/slices/cartSlice';
 import { Product } from '../store/slices/productsSlice';
 import { PriceTag } from '../components/PriceTag';
 import { useTheme, Theme } from '../theme/ThemeContext';
+import { API_BASE_URL } from '../config/api';
+
+/**
+ * Resolve a relative product image URL to an absolute URL.
+ */
+function resolveImageUrl(imageUrl: string): string {
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+  const origin = API_BASE_URL.replace(/\/api\/?$/, '');
+  return `${origin}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+}
 
 interface SelectProductScreenProps {
   navigation?: {
@@ -64,9 +76,9 @@ export function SelectProductScreen({
     <View style={styles.container}>
       {product.imageUrl ? (
         <Image
-          source={{ uri: product.imageUrl }}
+          source={{ uri: resolveImageUrl(product.imageUrl) }}
           style={styles.image}
-          resizeMode="cover"
+          resizeMode="contain"
         />
       ) : (
         <View style={[styles.image, styles.placeholder]}>
