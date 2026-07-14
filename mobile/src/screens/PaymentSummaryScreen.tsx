@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Pressable,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
@@ -17,12 +18,12 @@ import {
 import { addTransaction } from '../store/slices/transactionsSlice';
 import { clearCart } from '../store/slices/cartSlice';
 import { PriceTag } from '../components/PriceTag';
-import { Backdrop } from '../components/Backdrop';
 import { Toast } from '../components/Toast';
 import { createApiClient } from '../services/api';
 import { API_BASE_URL } from '../config/api';
 import { processPayment } from '../services/paymentService';
 import { selectTotalCents, selectGetProduct } from '../store/selectors';
+import { getBrandName, CardBrand } from '../services/cardDetection';
 
 interface PaymentSummaryScreenProps {
   navigation?: {
@@ -36,6 +37,19 @@ interface PaymentSummaryScreenProps {
       cardCvc: string;
     };
   };
+}
+
+function getBrandColor(brand: CardBrand): string {
+  switch (brand) {
+    case 'visa': return '#1A1F71';
+    case 'mastercard': return '#EB001B';
+    case 'amex': return '#2E77BC';
+    case 'diners': return '#0079BE';
+    case 'discover': return '#FF6000';
+    case 'elo': return '#000000';
+    case 'hipercard': return '#B3131B';
+    default: return '#5E5E5E';
+  }
 }
 
 /**
@@ -58,22 +72,22 @@ export function PaymentSummaryScreen({
   const [processing, setProcessing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const handleClose = useCallback(() => {
-    if (navigation?.goBack) navigation.goBack();
-    else navigation?.navigate('CardInfo');
-  }, [navigation]);
-
   const dismissToast = useCallback(() => setToastMessage(null), []);
 
   const totalCents = useSelector(selectTotalCents);
   const getProduct = useSelector(selectGetProduct);
 
+  const cardLastFour = routeCardNumber.slice(-4) ?? checkout.cardInfo?.lastFour ?? '';
+  const cardBrandName = checkout.cardInfo?.brand ?? 'unknown';
+  const cardBrand = cardBrandName as CardBrand;
+  const brandColor = getBrandColor(cardBrand);
+  const brandDisplay = getBrandName(cardBrand);
+  const cardholderName = checkout.cardInfo?.cardholderName ?? '';
+
   const handlePay = useCallback(async () => {
-    console.log('[Pay] clicked, cartItems:', cartItems.length, 'totalCents:', totalCents, 'routeCardNumber:', routeCardNumber ? routeCardNumber.slice(-4) : 'empty');
     setProcessing(true);
     setToastMessage(null);
 
-    // Allow "Processing..." state to render in tests
     if (__DEV__) {
       await new Promise(r => setTimeout(r, 50));
     }
@@ -86,12 +100,11 @@ export function PaymentSummaryScreen({
       }
 
       const api = createApiClient(API_BASE_URL);
-      // Card data comes from route params (Redux only holds safe truncated data — PCI DSS)
       const cardInfo = {
         number: routeCardNumber,
         expiry: routeCardExpiry,
         cvc: routeCardCvc,
-        cardholderName: checkout.cardInfo?.cardholderName ?? '',
+        cardholderName,
       };
       const items = cartItems.map((ci) => ({
         productId: ci.productId,
@@ -104,7 +117,6 @@ export function PaymentSummaryScreen({
       );
 
       dispatch(setToken(token));
-      // Clear sensitive card info only after the payment flow completes (PCI DSS)
       dispatch(clearCardInfo());
       dispatch(setTransactionId(transaction.id));
       dispatch(addTransaction(transaction));
@@ -113,7 +125,6 @@ export function PaymentSummaryScreen({
 
       navigation?.navigate('TransactionStatus', { transaction });
     } catch (err) {
-      console.error('[Pay] error:', err);
       const message =
         err instanceof Error ? err.message : 'Payment failed. Please try again.';
       setToastMessage(message);
@@ -130,126 +141,219 @@ export function PaymentSummaryScreen({
     routeCardNumber,
     routeCardExpiry,
     routeCardCvc,
+    cardholderName,
   ]);
 
-  const cardLastFour = routeCardNumber.slice(-4) ?? checkout.cardInfo?.lastFour ?? '';
-  const cardBrand = checkout.cardInfo?.brand ?? 'unknown';
-
   return (
-    <Backdrop visible title="Payment Summary" onClose={handleClose}>
+    <View style={styles.root}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
       >
-        {/* Order items */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Items</Text>
-        {cartItems.map((item) => {
-          const product = getProduct(item.productId);
-          return (
-            <View key={item.productId} style={styles.itemRow}>
-              <Text style={styles.itemName} numberOfLines={1}>
-                {product?.name ?? 'Unknown'} x{item.quantity}
-              </Text>
-              <PriceTag
-                cents={(product?.price ?? 0) * item.quantity}
-                style={styles.itemPrice}
-              />
+        {/* Order items section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Items</Text>
+          {cartItems.map((item) => {
+            const product = getProduct(item.productId);
+            return (
+              <View key={item.productId} style={styles.itemRow}>
+                <View style={styles.itemInfo}>
+                  <Text style={styles.itemName} numberOfLines={1}>
+                    {product?.name ?? 'Unknown'}
+                  </Text>
+                  <Text style={styles.itemQty}>Qty: {item.quantity}</Text>
+                </View>
+                <PriceTag
+                  cents={(product?.price ?? 0) * item.quantity}
+                  style={styles.itemPrice}
+                />
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Payment method section with compact card preview */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Payment Method</Text>
+          <View style={[styles.miniCard, { backgroundColor: brandColor }]}>
+            <View style={styles.miniCardRow}>
+              <View style={styles.miniChip} />
+              {brandDisplay && (
+                <Text style={styles.miniBrand}>{brandDisplay}</Text>
+              )}
             </View>
-          );
-        })}
-      </View>
+            <Text style={styles.miniCardNumber}>
+              •••• •••• •••• {cardLastFour}
+            </Text>
+            <View style={styles.miniCardRow}>
+              <Text style={styles.miniCardName} numberOfLines={1}>
+                {cardholderName || 'Cardholder'}
+              </Text>
+              <Text style={styles.miniCardExpiry}>
+                {routeCardExpiry || 'MM/YY'}
+              </Text>
+            </View>
+          </View>
+        </View>
 
-      {/* Card info */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Payment Method</Text>
-        <Text style={styles.cardInfo}>
-          {cardBrand === 'visa'
-            ? 'Visa'
-            : cardBrand === 'mastercard'
-            ? 'MasterCard'
-            : 'Card'}{' '}
-          **** {cardLastFour}
-        </Text>
-        <Text style={styles.cardInfo}>
-          {checkout.cardInfo?.cardholderName}
-        </Text>
-      </View>
+        {/* Total */}
+        <View style={styles.totalSection}>
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Total</Text>
+            <PriceTag cents={totalCents} style={styles.totalAmount} />
+          </View>
+        </View>
 
-      {/* Total */}
-      <View style={styles.totalRow}>
-        <Text style={styles.totalLabel}>Total</Text>
-        <PriceTag cents={totalCents} style={styles.totalAmount} />
-      </View>
-
-      {/* Pay button */}
-      <Pressable
-        style={({ pressed }) => [
-          styles.payButton,
-          processing && styles.disabledButton,
-          pressed && { opacity: 0.8 },
-        ]}
-        onPress={handlePay}
-        disabled={processing}
-      >
-        <Text style={styles.payButtonText}>
-          {processing ? 'Processing...' : `Pay ${totalCents > 0 ? '$' + (totalCents / 100).toFixed(2) : ''}`}
-        </Text>
-        </Pressable>
+        {/* Security note */}
+        <View style={styles.securityRow}>
+          <Text style={styles.securityIcon}>✓</Text>
+          <Text style={styles.securityText}>
+            Your payment is processed securely. Card details are encrypted.
+          </Text>
+        </View>
       </ScrollView>
+
+      {/* Fixed bottom pay button */}
+      <View style={styles.bottomBar}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.payButton,
+            processing && styles.disabledButton,
+            pressed && !processing && { opacity: 0.85 },
+          ]}
+          onPress={handlePay}
+          disabled={processing}
+        >
+          {processing ? (
+            <View style={styles.processingRow}>
+              <ActivityIndicator color="#fff" size="small" />
+              <Text style={styles.payButtonText}>  Processing...</Text>
+            </View>
+          ) : (
+            <Text style={styles.payButtonText}>
+              Pay ${(totalCents / 100).toFixed(2)}
+            </Text>
+          )}
+        </Pressable>
+      </View>
+
       <Toast message={toastMessage} onDismiss={dismissToast} />
-    </Backdrop>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   content: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
+
+  /* Section */
   section: {
-    marginBottom: 20,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#888',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 12,
   },
+
+  /* Items */
   itemRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
-  itemName: {
-    fontSize: 14,
-    color: '#333',
+  itemInfo: {
     flex: 1,
     marginRight: 8,
   },
-  itemPrice: {
-    fontSize: 14,
+  itemName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 2,
   },
-  cardInfo: {
+  itemQty: {
+    fontSize: 12,
+    color: '#999',
+  },
+  itemPrice: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+
+  /* Mini card preview */
+  miniCard: {
+    borderRadius: 12,
+    padding: 16,
+    paddingTop: 18,
+  },
+  miniCardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  miniChip: {
+    width: 28,
+    height: 20,
+    borderRadius: 3,
+    backgroundColor: '#FFD700',
+  },
+  miniBrand: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.9)',
+    letterSpacing: 1,
+  },
+  miniCardNumber: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+    letterSpacing: 1.5,
+    marginVertical: 14,
+    fontVariant: ['tabular-nums'],
+  },
+  miniCardName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.85)',
+    flex: 1,
+    marginRight: 8,
+  },
+  miniCardExpiry: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.85)',
+  },
+
+  /* Total */
+  totalSection: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
   },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#ddd',
-    marginBottom: 16,
   },
   totalLabel: {
     fontSize: 18,
@@ -258,11 +362,40 @@ const styles = StyleSheet.create({
   },
   totalAmount: {
     fontSize: 22,
+    fontWeight: '700',
+  },
+
+  /* Security */
+  securityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  securityIcon: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#4caf50',
+    marginRight: 8,
+  },
+  securityText: {
+    fontSize: 12,
+    color: '#888',
+    flex: 1,
+    lineHeight: 16,
+  },
+
+  /* Bottom bar */
+  bottomBar: {
+    padding: 16,
+    paddingBottom: 32,
+    backgroundColor: '#f5f5f5',
+    borderTopWidth: 1,
+    borderTopColor: '#e8e8e8',
   },
   payButton: {
     backgroundColor: '#6200ee',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 14,
+    padding: 18,
     alignItems: 'center',
   },
   disabledButton: {
@@ -270,7 +403,12 @@ const styles = StyleSheet.create({
   },
   payButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
+  },
+  processingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
