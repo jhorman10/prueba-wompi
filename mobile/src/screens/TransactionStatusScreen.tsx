@@ -96,7 +96,13 @@ export function TransactionStatusScreen({
         {transaction.id && (
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Transaction ID</Text>
-            <Text style={styles.detailValue}>{transaction.id}</Text>
+            <Text
+              style={styles.detailValue}
+              numberOfLines={1}
+              ellipsizeMode="middle"
+            >
+              {transaction.id}
+            </Text>
           </View>
         )}
         {transaction.amount != null && (
@@ -202,6 +208,9 @@ const getStyles = (theme: Theme) =>
       fontSize: theme.typography.body.fontSize,
       fontWeight: '600',
       color: theme.colors.text,
+      flexShrink: 1,
+      textAlign: 'right',
+      maxWidth: '60%',
     },
     successValue: {
       color: theme.colors.success,

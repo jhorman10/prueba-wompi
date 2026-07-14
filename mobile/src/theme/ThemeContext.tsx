@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
 import { useColorScheme } from 'react-native';
 import { lightColors, darkColors, ThemeColors } from './colors';
 import { spacing } from './spacing';
@@ -100,29 +100,17 @@ function buildTheme(colors: ThemeColors, isDark: boolean): Theme {
 interface ThemeContextValue {
   theme: Theme;
   isDark: boolean;
-  toggleDarkMode: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const systemScheme = useColorScheme();
-  const [isDark, setIsDark] = useState(systemScheme === 'dark');
-
-  useEffect(() => {
-    // Sync with system when no manual override is stored
-    setIsDark(systemScheme === 'dark');
-  }, [systemScheme]);
-
-  const toggleDarkMode = useCallback(() => {
-    setIsDark((prev) => !prev);
-  }, []);
-
+  const isDark = useColorScheme() === 'dark';
   const colors = isDark ? darkColors : lightColors;
   const theme = useMemo(() => buildTheme(colors, isDark), [colors, isDark]);
 
   return (
-    <ThemeContext.Provider value={{ theme, isDark, toggleDarkMode }}>
+    <ThemeContext.Provider value={{ theme, isDark }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -134,14 +122,6 @@ export function useTheme(): Theme {
     throw new Error('useTheme must be used within a ThemeProvider');
   }
   return ctx.theme;
-}
-
-export function useDarkMode(): { isDark: boolean; toggleDarkMode: () => void } {
-  const ctx = useContext(ThemeContext);
-  if (!ctx) {
-    throw new Error('useDarkMode must be used within a ThemeProvider');
-  }
-  return { isDark: ctx.isDark, toggleDarkMode: ctx.toggleDarkMode };
 }
 
 export { lightColors, darkColors };

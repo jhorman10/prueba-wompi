@@ -9,7 +9,6 @@ import { CardInfoScreen } from '../screens/CardInfoScreen';
 import { PaymentSummaryScreen } from '../screens/PaymentSummaryScreen';
 import { TransactionStatusScreen } from '../screens/TransactionStatusScreen';
 import { useTheme } from '../theme/ThemeContext';
-import { ThemeToggle } from '../components/ThemeToggle';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -56,10 +55,7 @@ function AppNavigatorContent() {
       <Stack.Screen
         name="Home"
         component={HomeScreen}
-        options={{
-          title: 'Products',
-          headerRight: () => <ThemeToggle />,
-        }}
+        options={{ title: 'Products' }}
       />
       <Stack.Screen
         name="SelectProduct"
