@@ -99,8 +99,16 @@ export class WompiPaymentGateway implements IPaymentGateway {
 
       if (response.status !== 201) {
         const errorBody = await response.json().catch(() => ({}));
+        console.error('[Wompi] tokenize error:', JSON.stringify(errorBody));
+        const detail =
+          errorBody?.error?.messages
+            ? Object.entries(errorBody.error.messages)
+                .map(([field, msgs]) => `${field}: ${(msgs as string[]).join(', ')}`)
+                .join(' | ')
+            : '';
         throw new WompiHttpError(
-          errorBody?.error?.message ||
+          detail ||
+            errorBody?.error?.message ||
             errorBody?.message ||
             (errorBody?.error?.type ? `Wompi validation error: ${errorBody.error.type}` : undefined) ||
             `Wompi tokenize failed: ${response.status}`,

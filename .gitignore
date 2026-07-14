@@ -74,3 +74,15 @@ NextSteps.md
 # Release keystore (DO NOT COMMIT)
 mobile/android/app/paycheck-release.keystore
 mobile/release/paycheck-release.keystore
+
+# Android build artifacts
+mobile/android/app/src/main/assets/index.android.bundle
+mobile/android/app/src/main/res/raw/
+mobile/android/app/build/
+mobile/android/.gradle/
+mobile/android/app/src/main/res/drawable-*
+
+# Release artifacts
+mobile/release/*.aab
+mobile/release/*.apk
+mobile/release/*.keystore
