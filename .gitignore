@@ -70,3 +70,7 @@ coverage/
 
 # Misc
 NextSteps.md
+
+# Release keystore (DO NOT COMMIT)
+mobile/android/app/paycheck-release.keystore
+mobile/release/paycheck-release.keystore
