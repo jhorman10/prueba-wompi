@@ -18,6 +18,7 @@ import {
   getBrandName,
   CardBrand,
 } from '../services/cardDetection';
+import { useTheme, Theme } from '../theme/ThemeContext';
 
 interface CardInfoScreenProps {
   navigation?: {
@@ -63,6 +64,9 @@ function getBrandColor(brand: CardBrand): string {
  * Card info screen — collects credit card details with brand detection and validation.
  */
 export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+  const { colors, spacing, radius } = theme;
   const dispatch = useDispatch<AppDispatch>();
   const checkout = useSelector((state: RootState) => state.checkout);
 
@@ -245,12 +249,12 @@ export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
       </View>
 
       <Pressable
-        style={({ pressed }) => [styles.continueButton, pressed && { opacity: 0.8 }]}
+        style={({ pressed }) => [styles.continueButton, pressed && { opacity: 0.7 }]}
         onPress={handleContinue}
         disabled={submitting}
       >
         {submitting ? (
-          <ActivityIndicator color="#fff" testID="continue-spinner" />
+          <ActivityIndicator color={colors.textOnPrimary} testID="continue-spinner" />
         ) : (
           <Text style={styles.continueButtonText}>Pay Now</Text>
         )}
@@ -259,114 +263,115 @@ export function CardInfoScreen({ navigation }: CardInfoScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 40,
-  },
+const getStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    content: {
+      padding: theme.spacing.base,
+      paddingBottom: theme.spacing.xl,
+    },
 
-  /* Card preview */
-  cardPreview: {
-    borderRadius: 16,
-    padding: 24,
-    paddingTop: 28,
-    marginBottom: 28,
-    minHeight: 190,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  cardChip: {
-    width: 40,
-    height: 30,
-    borderRadius: 4,
-    backgroundColor: '#FFD700',
-    marginBottom: 24,
-  },
-  cardNumberText: {
-    fontSize: 22,
-    fontWeight: '600',
-    color: '#fff',
-    letterSpacing: 2,
-    marginBottom: 24,
-    fontVariant: ['tabular-nums'],
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  cardLabel: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.7)',
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  cardValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  cardBrandBadge: {
-    position: 'absolute',
-    top: 16,
-    right: 20,
-  },
-  cardBrandText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: 'rgba(255,255,255,0.9)',
-    letterSpacing: 1,
-  },
+    /* Card preview */
+    cardPreview: {
+      borderRadius: theme.radius.xl,
+      padding: theme.spacing.xl,
+      paddingTop: 28,
+      marginBottom: 28,
+      minHeight: 190,
+      position: 'relative',
+      overflow: 'hidden',
+    },
+    cardChip: {
+      width: 40,
+      height: 30,
+      borderRadius: 4,
+      backgroundColor: '#FFD700',
+      marginBottom: theme.spacing.xl,
+    },
+    cardNumberText: {
+      fontSize: 22,
+      fontWeight: '600',
+      color: '#fff',
+      letterSpacing: 2,
+      marginBottom: theme.spacing.xl,
+      fontVariant: ['tabular-nums'],
+    },
+    cardFooter: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    },
+    cardLabel: {
+      fontSize: 10,
+      color: 'rgba(255,255,255,0.7)',
+      letterSpacing: 1,
+      marginBottom: 4,
+    },
+    cardValue: {
+      fontSize: theme.typography.bodyBold.fontSize,
+      fontWeight: '600',
+      color: '#fff',
+    },
+    cardBrandBadge: {
+      position: 'absolute',
+      top: 16,
+      right: theme.spacing.lg,
+    },
+    cardBrandText: {
+      fontSize: 16,
+      fontWeight: '800',
+      color: 'rgba(255,255,255,0.9)',
+      letterSpacing: 1,
+    },
 
-  /* Form */
-  row: {
-    flexDirection: 'row',
-  },
-  halfField: {
-    flex: 1,
-  },
-  halfFieldFirst: {
-    marginRight: 6,
-  },
-  halfFieldSecond: {
-    marginLeft: 6,
-  },
+    /* Form */
+    row: {
+      flexDirection: 'row',
+    },
+    halfField: {
+      flex: 1,
+    },
+    halfFieldFirst: {
+      marginRight: theme.spacing.xs,
+    },
+    halfFieldSecond: {
+      marginLeft: theme.spacing.xs,
+    },
 
-  /* Security */
-  securityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 8,
-    paddingHorizontal: 4,
-  },
-  securityIcon: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#4caf50',
-    marginRight: 8,
-  },
-  securityText: {
-    fontSize: 12,
-    color: '#888',
-    flex: 1,
-    lineHeight: 16,
-  },
+    /* Security */
+    securityRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: theme.spacing.lg,
+      marginBottom: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.xs,
+    },
+    securityIcon: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.colors.success,
+      marginRight: theme.spacing.sm,
+    },
+    securityText: {
+      fontSize: theme.typography.caption.fontSize,
+      color: theme.colors.textSecondary,
+      flex: 1,
+      lineHeight: theme.typography.caption.lineHeight,
+    },
 
-  /* Button */
-  continueButton: {
-    marginTop: 16,
-    backgroundColor: '#6200ee',
-    borderRadius: 14,
-    padding: 18,
-    alignItems: 'center',
-  },
-  continueButtonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-});
+    /* Button */
+    continueButton: {
+      marginTop: theme.spacing.base,
+      backgroundColor: theme.colors.primary,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing.lg,
+      alignItems: 'center',
+    },
+    continueButtonText: {
+      color: theme.colors.textOnPrimary,
+      fontSize: 17,
+      fontWeight: '700',
+    },
+  });

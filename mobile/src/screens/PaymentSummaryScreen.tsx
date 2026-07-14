@@ -19,11 +19,11 @@ import { addTransaction } from '../store/slices/transactionsSlice';
 import { clearCart } from '../store/slices/cartSlice';
 import { PriceTag } from '../components/PriceTag';
 import { Toast } from '../components/Toast';
-import { createApiClient } from '../services/api';
-import { API_BASE_URL } from '../config/api';
+import { getApiClientInstance } from '../services/api';
 import { processPayment } from '../services/paymentService';
 import { selectTotalCents, selectGetProduct } from '../store/selectors';
 import { getBrandName, CardBrand } from '../services/cardDetection';
+import { useTheme, Theme } from '../theme/ThemeContext';
 
 interface PaymentSummaryScreenProps {
   navigation?: {
@@ -60,6 +60,9 @@ export function PaymentSummaryScreen({
   navigation,
   route,
 }: PaymentSummaryScreenProps) {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+  const { colors, spacing, radius } = theme;
   const dispatch = useDispatch<AppDispatch>();
   const checkout = useSelector((state: RootState) => state.checkout);
   const cartItems = useSelector((state: RootState) => state.cart?.items ?? []);
@@ -99,7 +102,7 @@ export function PaymentSummaryScreen({
         return;
       }
 
-      const api = createApiClient(API_BASE_URL);
+      const api = getApiClientInstance();
       const cardInfo = {
         number: routeCardNumber,
         expiry: routeCardExpiry,
@@ -219,14 +222,14 @@ export function PaymentSummaryScreen({
           style={({ pressed }) => [
             styles.payButton,
             processing && styles.disabledButton,
-            pressed && !processing && { opacity: 0.85 },
+            pressed && !processing && { opacity: 0.7 },
           ]}
           onPress={handlePay}
           disabled={processing}
         >
           {processing ? (
             <View style={styles.processingRow}>
-              <ActivityIndicator color="#fff" size="small" />
+              <ActivityIndicator color={colors.textOnPrimary} size="small" />
               <Text style={styles.payButtonText}>  Processing...</Text>
             </View>
           ) : (
@@ -242,173 +245,176 @@ export function PaymentSummaryScreen({
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  container: {
-    flex: 1,
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 100,
-  },
+const getStyles = (theme: Theme) =>
+  StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    container: {
+      flex: 1,
+    },
+    content: {
+      padding: theme.spacing.base,
+      paddingBottom: 100,
+    },
 
-  /* Section */
-  section: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#888',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 12,
-  },
+    /* Section */
+    section: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.xl,
+      padding: theme.spacing.base,
+      marginBottom: theme.spacing.base,
+      ...theme.shadows.sm,
+    },
+    sectionTitle: {
+      fontSize: theme.typography.label.fontSize,
+      fontWeight: theme.typography.label.fontWeight,
+      color: theme.colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: theme.typography.label.letterSpacing,
+      marginBottom: theme.spacing.md,
+    },
 
-  /* Items */
-  itemRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  itemInfo: {
-    flex: 1,
-    marginRight: 8,
-  },
-  itemName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 2,
-  },
-  itemQty: {
-    fontSize: 12,
-    color: '#999',
-  },
-  itemPrice: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
+    /* Items */
+    itemRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: theme.spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.borderSubtle,
+    },
+    itemInfo: {
+      flex: 1,
+      marginRight: theme.spacing.sm,
+    },
+    itemName: {
+      fontSize: theme.typography.body.fontSize,
+      fontWeight: '600',
+      color: theme.colors.text,
+      marginBottom: theme.spacing.xxs,
+    },
+    itemQty: {
+      fontSize: theme.typography.caption.fontSize,
+      color: theme.colors.textPlaceholder,
+    },
+    itemPrice: {
+      fontSize: theme.typography.body.fontSize,
+      fontWeight: '600',
+    },
 
-  /* Mini card preview */
-  miniCard: {
-    borderRadius: 12,
-    padding: 16,
-    paddingTop: 18,
-  },
-  miniCardRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  miniChip: {
-    width: 28,
-    height: 20,
-    borderRadius: 3,
-    backgroundColor: '#FFD700',
-  },
-  miniBrand: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: 'rgba(255,255,255,0.9)',
-    letterSpacing: 1,
-  },
-  miniCardNumber: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    letterSpacing: 1.5,
-    marginVertical: 14,
-    fontVariant: ['tabular-nums'],
-  },
-  miniCardName: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.85)',
-    flex: 1,
-    marginRight: 8,
-  },
-  miniCardExpiry: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.85)',
-  },
+    /* Mini card preview */
+    miniCard: {
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.base,
+      paddingTop: theme.spacing.lg,
+    },
+    miniCardRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    miniChip: {
+      width: 28,
+      height: 20,
+      borderRadius: 3,
+      backgroundColor: '#FFD700',
+    },
+    miniBrand: {
+      fontSize: theme.typography.body.fontSize,
+      fontWeight: '800',
+      color: 'rgba(255,255,255,0.9)',
+      letterSpacing: 1,
+    },
+    miniCardNumber: {
+      fontSize: theme.typography.h3.fontSize,
+      fontWeight: '600',
+      color: '#fff',
+      letterSpacing: 1.5,
+      marginVertical: theme.spacing.sm,
+      fontVariant: ['tabular-nums'],
+    },
+    miniCardName: {
+      fontSize: theme.typography.caption.fontSize,
+      fontWeight: '600',
+      color: 'rgba(255,255,255,0.85)',
+      flex: 1,
+      marginRight: theme.spacing.sm,
+    },
+    miniCardExpiry: {
+      fontSize: theme.typography.caption.fontSize,
+      fontWeight: '600',
+      color: 'rgba(255,255,255,0.85)',
+    },
 
-  /* Total */
-  totalSection: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-  },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  totalLabel: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1a1a1a',
-  },
-  totalAmount: {
-    fontSize: 22,
-    fontWeight: '700',
-  },
+    /* Total */
+    totalSection: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.xl,
+      padding: theme.spacing.base,
+      marginBottom: theme.spacing.base,
+      ...theme.shadows.sm,
+    },
+    totalRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    totalLabel: {
+      fontSize: theme.typography.bodyBold.fontSize,
+      fontWeight: theme.typography.bodyBold.fontWeight,
+      color: theme.colors.text,
+    },
+    totalAmount: {
+      fontSize: 22,
+      fontWeight: '700',
+    },
 
-  /* Security */
-  securityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-  },
-  securityIcon: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#4caf50',
-    marginRight: 8,
-  },
-  securityText: {
-    fontSize: 12,
-    color: '#888',
-    flex: 1,
-    lineHeight: 16,
-  },
+    /* Security */
+    securityRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: theme.spacing.xs,
+    },
+    securityIcon: {
+      fontSize: theme.typography.body.fontSize,
+      fontWeight: '700',
+      color: theme.colors.success,
+      marginRight: theme.spacing.sm,
+    },
+    securityText: {
+      fontSize: theme.typography.caption.fontSize,
+      color: theme.colors.textSecondary,
+      flex: 1,
+      lineHeight: theme.typography.caption.lineHeight,
+    },
 
-  /* Bottom bar */
-  bottomBar: {
-    padding: 16,
-    paddingBottom: 32,
-    backgroundColor: '#f5f5f5',
-    borderTopWidth: 1,
-    borderTopColor: '#e8e8e8',
-  },
-  payButton: {
-    backgroundColor: '#6200ee',
-    borderRadius: 14,
-    padding: 18,
-    alignItems: 'center',
-  },
-  disabledButton: {
-    backgroundColor: '#b39ddb',
-  },
-  payButtonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  processingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+    /* Bottom bar */
+    bottomBar: {
+      padding: theme.spacing.base,
+      paddingBottom: 32,
+      backgroundColor: theme.colors.background,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
+    payButton: {
+      backgroundColor: theme.colors.primary,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing.lg,
+      alignItems: 'center',
+    },
+    disabledButton: {
+      backgroundColor: theme.colors.primaryLight,
+    },
+    payButtonText: {
+      color: theme.colors.textOnPrimary,
+      fontSize: 17,
+      fontWeight: '700',
+    },
+    processingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+  });

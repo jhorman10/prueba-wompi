@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Pressable, StyleSheet, Animated, Platform } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
+import type { Theme } from '../theme/ThemeContext';
 
 export interface BackdropProps {
   /** Controls whether the scrim + panel are shown. When false, nothing is rendered. */
@@ -20,6 +22,9 @@ export interface BackdropProps {
  * `visible` and `onClose` props. Not rendered at all when `visible` is false.
  */
 export function Backdrop({ visible, onClose, children, title }: BackdropProps) {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   const slideRef = useRef<Animated.Value | null>(null);
   if (slideRef.current === null) {
     slideRef.current = new Animated.Value(0);
@@ -61,7 +66,7 @@ export function Backdrop({ visible, onClose, children, title }: BackdropProps) {
             testID="backdrop-close"
             style={({ pressed }) => [
               styles.closeButton,
-              pressed && { opacity: 0.5 },
+              pressed && { opacity: 0.7 },
             ]}
             onPress={onClose}
             accessibilityRole="button"
@@ -83,66 +88,67 @@ export function Backdrop({ visible, onClose, children, title }: BackdropProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'flex-end',
-  },
-  scrim: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    zIndex: 0,
-  },
-  panel: {
-    width: '100%',
-    maxHeight: '90%',
-    display: 'flex',
-    flexDirection: 'column',
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingBottom: 24,
-    zIndex: 1,
-    elevation: Platform.OS === 'android' ? 10 : undefined,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1a1a1a',
-  },
-  titleSpacer: {
-    flex: 1,
-  },
-  closeButton: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginLeft: Platform.OS === 'android' ? -4 : -8,
-  },
-  closeText: {
-    fontSize: 28,
-    lineHeight: 32,
-    color: '#1a1a1a',
-    fontWeight: '300',
-  },
-});
+const getStyles = (theme: Theme) =>
+  StyleSheet.create({
+    root: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'flex-end',
+    },
+    scrim: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: theme.colors.scrim,
+      zIndex: 0,
+    },
+    panel: {
+      width: '100%',
+      maxHeight: '90%',
+      display: 'flex',
+      flexDirection: 'column',
+      backgroundColor: theme.colors.surfaceElevated,
+      borderTopLeftRadius: theme.radius.xl,
+      borderTopRightRadius: theme.radius.xl,
+      paddingBottom: theme.spacing.xl,
+      zIndex: 1,
+      elevation: Platform.OS === 'android' ? 10 : undefined,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.borderSubtle,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: theme.colors.text,
+    },
+    titleSpacer: {
+      flex: 1,
+    },
+    closeButton: {
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
+      marginLeft: Platform.OS === 'android' ? -4 : -8,
+    },
+    closeText: {
+      fontSize: 28,
+      lineHeight: 32,
+      color: theme.colors.text,
+      fontWeight: '300',
+    },
+  });

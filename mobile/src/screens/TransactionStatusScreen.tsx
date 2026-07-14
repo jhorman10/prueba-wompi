@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store/store';
 import { PriceTag } from '../components/PriceTag';
+import { useTheme, Theme } from '../theme/ThemeContext';
 
 interface TransactionStatusScreenProps {
   navigation?: {
@@ -27,6 +28,9 @@ export function TransactionStatusScreen({
   navigation,
   route,
 }: TransactionStatusScreenProps) {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+  const { colors, spacing, radius } = theme;
   const lastTransaction = useSelector(
     (state: RootState) => state.transactions.lastTransaction,
   );
@@ -45,15 +49,15 @@ export function TransactionStatusScreen({
           }}
           style={({ pressed }) => [
             styles.headerExitButton,
-            pressed && { opacity: 0.5 },
+            pressed && { opacity: 0.7 },
           ]}
           hitSlop={16}
         >
-          <Text style={styles.headerExitText}>‹</Text>
+          <Text style={[styles.headerExitText, { color: colors.tint }]}>‹</Text>
         </Pressable>
       ),
     });
-  }, [stackNavigation]);
+  }, [stackNavigation, colors.tint]);
 
   const goHome = () => {
     stackNavigation.reset({
@@ -64,10 +68,10 @@ export function TransactionStatusScreen({
 
   if (!transaction) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
         <Text style={styles.noDataText}>No transaction data</Text>
         <Pressable
-          style={({ pressed }) => [styles.homeButton, pressed && { opacity: 0.8 }]}
+          style={({ pressed }) => [styles.homeButton, pressed && { opacity: 0.7 }]}
           onPress={goHome}
         >
           <Text style={styles.homeButtonText}>Back to Home</Text>
@@ -115,7 +119,7 @@ export function TransactionStatusScreen({
       </View>
 
       <Pressable
-        style={({ pressed }) => [styles.homeButton, pressed && { opacity: 0.8 }]}
+        style={({ pressed }) => [styles.homeButton, pressed && { opacity: 0.7 }]}
         onPress={goHome}
       >
         <Text style={styles.homeButtonText}>Back to Home</Text>
@@ -124,107 +128,108 @@ export function TransactionStatusScreen({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    padding: 16,
-  },
-  content: {
-    paddingBottom: 32,
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-  },
-  noDataText: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 16,
-  },
-  heading: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  statusBadge: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    alignSelf: 'center',
-    marginBottom: 32,
-  },
-  successBadge: {
-    backgroundColor: '#e8f5e9',
-  },
-  failureBadge: {
-    backgroundColor: '#fef2f2',
-  },
-  statusText: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  successText: {
-    color: '#2e7d32',
-  },
-  failureText: {
-    color: '#e53935',
-  },
-  details: {
-    backgroundColor: '#f8f8f8',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 32,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  detailLabel: {
-    fontSize: 14,
-    color: '#666',
-  },
-  detailValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  successValue: {
-    color: '#2e7d32',
-  },
-  failureValue: {
-    color: '#e53935',
-  },
-  headerExitButton: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginLeft: Platform.OS === 'android' ? -4 : -8,
-  },
-  headerExitText: {
-    fontSize: 28,
-    lineHeight: 32,
-    color: '#1a1a1a',
-    fontWeight: '300',
-  },
-  homeButton: {
-    backgroundColor: '#6200ee',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  homeButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
+const getStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+      padding: theme.spacing.base,
+    },
+    content: {
+      paddingBottom: 32,
+    },
+    center: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: theme.spacing.base,
+    },
+    noDataText: {
+      fontSize: theme.typography.body.fontSize,
+      color: theme.colors.textSecondary,
+      marginBottom: theme.spacing.base,
+    },
+    heading: {
+      fontSize: theme.typography.h2.fontSize,
+      fontWeight: theme.typography.h2.fontWeight,
+      color: theme.colors.text,
+      marginBottom: theme.spacing.xl,
+      textAlign: 'center',
+    },
+    statusBadge: {
+      paddingVertical: theme.spacing.md,
+      paddingHorizontal: theme.spacing.xl,
+      borderRadius: theme.radius.md,
+      alignSelf: 'center',
+      marginBottom: 32,
+    },
+    successBadge: {
+      backgroundColor: theme.colors.success + '1A',
+    },
+    failureBadge: {
+      backgroundColor: theme.colors.error + '1A',
+    },
+    statusText: {
+      fontSize: theme.typography.h3.fontSize,
+      fontWeight: '700',
+    },
+    successText: {
+      color: theme.colors.success,
+    },
+    failureText: {
+      color: theme.colors.error,
+    },
+    details: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.base,
+      marginBottom: 32,
+      ...theme.shadows.sm,
+    },
+    detailRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: theme.spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.borderSubtle,
+    },
+    detailLabel: {
+      fontSize: theme.typography.body.fontSize,
+      color: theme.colors.textSecondary,
+    },
+    detailValue: {
+      fontSize: theme.typography.body.fontSize,
+      fontWeight: '600',
+      color: theme.colors.text,
+    },
+    successValue: {
+      color: theme.colors.success,
+    },
+    failureValue: {
+      color: theme.colors.error,
+    },
+    headerExitButton: {
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
+      marginLeft: Platform.OS === 'android' ? -4 : -8,
+    },
+    headerExitText: {
+      fontSize: 28,
+      lineHeight: 32,
+      fontWeight: '300',
+    },
+    homeButton: {
+      backgroundColor: theme.colors.primary,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.base,
+      alignItems: 'center',
+    },
+    homeButtonText: {
+      color: theme.colors.textOnPrimary,
+      fontSize: theme.typography.bodyBold.fontSize,
+      fontWeight: theme.typography.bodyBold.fontWeight,
+    },
+  });

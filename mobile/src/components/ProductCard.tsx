@@ -1,5 +1,7 @@
 import React from 'react';
 import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
+import type { Theme } from '../theme/ThemeContext';
 import { Product } from '../store/slices/productsSlice';
 import { PriceTag } from './PriceTag';
 
@@ -16,9 +18,12 @@ interface ProductCardProps {
  * Tapping triggers onSelect.
  */
 export function ProductCard({ product, onSelect }: ProductCardProps) {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
   return (
     <Pressable
-      style={({ pressed }) => [styles.card, pressed && { opacity: 0.8 }]}
+      style={({ pressed }) => [styles.card, pressed && { opacity: 0.7 }]}
       onPress={() => onSelect(product)}
     >
       {product.imageUrl ? (
@@ -44,53 +49,54 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
           <Text style={styles.outOfStock}>Out of stock</Text>
         )}
       </View>
-      </Pressable>
+    </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 12,
-    marginVertical: 6,
-    marginHorizontal: 16,
-    boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-  },
-  image: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    backgroundColor: '#f0f0f0',
-  },
-  placeholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholderText: {
-    fontSize: 12,
-    color: '#999',
-  },
-  info: {
-    flex: 1,
-    marginLeft: 12,
-    justifyContent: 'center',
-  },
-  name: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  description: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 4,
-  },
-  outOfStock: {
-    fontSize: 12,
-    color: '#e53935',
-    fontWeight: '600',
-    marginTop: 4,
-  },
-});
+const getStyles = (theme: Theme) =>
+  StyleSheet.create({
+    card: {
+      flexDirection: 'row',
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing.md,
+      marginVertical: theme.spacing.sm,
+      marginHorizontal: theme.spacing.base,
+      ...theme.shadows.sm,
+    },
+    image: {
+      width: 80,
+      height: 80,
+      borderRadius: theme.radius.sm,
+      backgroundColor: theme.colors.skeleton,
+    },
+    placeholder: {
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    placeholderText: {
+      fontSize: 12,
+      color: theme.colors.textPlaceholder,
+    },
+    info: {
+      flex: 1,
+      marginLeft: theme.spacing.md,
+      justifyContent: 'center',
+    },
+    name: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.colors.text,
+    },
+    description: {
+      fontSize: 13,
+      color: theme.colors.textSecondary,
+      marginTop: theme.spacing.xs,
+    },
+    outOfStock: {
+      fontSize: 12,
+      color: theme.colors.error,
+      fontWeight: '600',
+      marginTop: theme.spacing.xs,
+    },
+  });

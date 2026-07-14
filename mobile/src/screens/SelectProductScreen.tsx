@@ -12,6 +12,7 @@ import { RootState, AppDispatch } from '../store/store';
 import { addItem } from '../store/slices/cartSlice';
 import { Product } from '../store/slices/productsSlice';
 import { PriceTag } from '../components/PriceTag';
+import { useTheme, Theme } from '../theme/ThemeContext';
 
 interface SelectProductScreenProps {
   navigation?: {
@@ -31,6 +32,9 @@ export function SelectProductScreen({
   navigation,
   route,
 }: SelectProductScreenProps) {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+  const { colors, spacing, radius } = theme;
   const dispatch = useDispatch<AppDispatch>();
   const product = route?.params?.product;
 
@@ -40,7 +44,7 @@ export function SelectProductScreen({
   if (!product) {
     return (
       <View style={styles.center}>
-        <Text>Product not found</Text>
+        <Text style={{ color: colors.textSecondary }}>Product not found</Text>
       </View>
     );
   }
@@ -48,7 +52,6 @@ export function SelectProductScreen({
   const handleAddToCart = async () => {
     setAdding(true);
     try {
-      // Yield so the loading state is reflected in the UI while we process.
       await new Promise<void>((resolve) => setTimeout(resolve, 0));
       dispatch(addItem({ productId: product.id, quantity }));
       navigation?.navigate('Checkout');
@@ -79,14 +82,14 @@ export function SelectProductScreen({
 
       <View style={styles.quantityRow}>
         <Pressable
-          style={({ pressed }) => [styles.qtyButton, pressed && { opacity: 0.8 }]}
+          style={({ pressed }) => [styles.qtyButton, pressed && { opacity: 0.7 }]}
           onPress={() => setQuantity(Math.max(1, quantity - 1))}
         >
           <Text style={styles.qtyButtonText}>-</Text>
         </Pressable>
         <Text style={styles.quantity}>{quantity}</Text>
         <Pressable
-          style={({ pressed }) => [styles.qtyButton, pressed && { opacity: 0.8 }]}
+          style={({ pressed }) => [styles.qtyButton, pressed && { opacity: 0.7 }]}
           onPress={() => setQuantity(Math.min(product.stock, quantity + 1))}
         >
           <Text style={styles.qtyButtonText}>+</Text>
@@ -101,13 +104,13 @@ export function SelectProductScreen({
         style={({ pressed }) => [
           styles.addButton,
           quantity > product.stock && styles.disabledButton,
-          pressed && { opacity: 0.8 },
+          pressed && { opacity: 0.7 },
         ]}
         onPress={handleAddToCart}
         disabled={quantity > product.stock || adding}
       >
         {adding ? (
-          <ActivityIndicator color="#fff" testID="add-to-cart-spinner" />
+          <ActivityIndicator color={colors.textOnPrimary} testID="add-to-cart-spinner" />
         ) : (
           <Text style={styles.addButtonText}>Add to Cart</Text>
         )}
@@ -116,93 +119,94 @@ export function SelectProductScreen({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    padding: 16,
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  image: {
-    width: '100%',
-    height: 200,
-    borderRadius: 12,
-    backgroundColor: '#f0f0f0',
-  },
-  placeholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholderText: {
-    color: '#999',
-    fontSize: 14,
-  },
-  name: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginTop: 16,
-  },
-  description: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 8,
-    lineHeight: 20,
-  },
-  price: {
-    fontSize: 20,
-    marginTop: 12,
-  },
-  quantityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 24,
-  },
-  qtyButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  qtyButtonText: {
-    fontSize: 22,
-    fontWeight: '600',
-    color: '#333',
-  },
-  quantity: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginHorizontal: 24,
-    minWidth: 30,
-    textAlign: 'center',
-  },
-  total: {
-    fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginTop: 16,
-    color: '#1a1a1a',
-  },
-  addButton: {
-    marginTop: 24,
-    backgroundColor: '#6200ee',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  disabledButton: {
-    backgroundColor: '#ccc',
-  },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
+const getStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+      padding: theme.spacing.base,
+    },
+    center: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    image: {
+      width: '100%',
+      height: 200,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.surface,
+    },
+    placeholder: {
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    placeholderText: {
+      color: theme.colors.textPlaceholder,
+      fontSize: theme.typography.body.fontSize,
+    },
+    name: {
+      fontSize: theme.typography.h2.fontSize,
+      fontWeight: theme.typography.h2.fontWeight,
+      color: theme.colors.text,
+      marginTop: theme.spacing.base,
+    },
+    description: {
+      fontSize: theme.typography.body.fontSize,
+      color: theme.colors.textSecondary,
+      marginTop: theme.spacing.sm,
+      lineHeight: theme.typography.body.lineHeight,
+    },
+    price: {
+      fontSize: theme.typography.h3.fontSize,
+      marginTop: theme.spacing.md,
+    },
+    quantityRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: theme.spacing.xl,
+    },
+    qtyButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: theme.colors.surface,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    qtyButtonText: {
+      fontSize: 22,
+      fontWeight: '600',
+      color: theme.colors.text,
+    },
+    quantity: {
+      fontSize: theme.typography.h3.fontSize,
+      fontWeight: '600',
+      marginHorizontal: theme.spacing.xl,
+      minWidth: 30,
+      textAlign: 'center',
+    },
+    total: {
+      fontSize: theme.typography.bodyBold.fontSize,
+      fontWeight: theme.typography.bodyBold.fontWeight,
+      textAlign: 'center',
+      marginTop: theme.spacing.base,
+      color: theme.colors.text,
+    },
+    addButton: {
+      marginTop: theme.spacing.xl,
+      backgroundColor: theme.colors.primary,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.base,
+      alignItems: 'center',
+    },
+    disabledButton: {
+      backgroundColor: theme.colors.border,
+    },
+    addButtonText: {
+      color: theme.colors.textOnPrimary,
+      fontSize: theme.typography.bodyBold.fontSize,
+      fontWeight: theme.typography.bodyBold.fontWeight,
+    },
+  });

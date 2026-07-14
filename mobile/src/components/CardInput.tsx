@@ -1,5 +1,7 @@
 import React from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
+import type { Theme } from '../theme/ThemeContext';
 
 interface CardInputProps {
   value: string;
@@ -26,6 +28,10 @@ export function CardInput({
   maxLength,
   secureTextEntry = false,
 }: CardInputProps) {
+  const theme = useTheme();
+  const { colors } = theme;
+  const styles = getStyles(theme);
+
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
@@ -34,7 +40,7 @@ export function CardInput({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="#999"
+        placeholderTextColor={colors.textPlaceholder}
         keyboardType={keyboardType}
         maxLength={maxLength}
         secureTextEntry={secureTextEntry}
@@ -45,31 +51,32 @@ export function CardInput({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 6,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: '#1a1a1a',
-    backgroundColor: '#fff',
-  },
-  inputError: {
-    borderColor: '#e53935',
-  },
-  error: {
-    fontSize: 12,
-    color: '#e53935',
-    marginTop: 4,
-  },
-});
+const getStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      marginBottom: theme.spacing.base,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.colors.text,
+      marginBottom: theme.spacing.xs,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.md,
+      fontSize: 16,
+      color: theme.colors.text,
+      backgroundColor: theme.colors.surface,
+    },
+    inputError: {
+      borderColor: theme.colors.error,
+    },
+    error: {
+      fontSize: 12,
+      color: theme.colors.error,
+      marginTop: theme.spacing.xs,
+    },
+  });

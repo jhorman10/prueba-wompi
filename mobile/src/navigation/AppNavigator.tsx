@@ -8,6 +8,8 @@ import { CheckoutScreen } from '../screens/CheckoutScreen';
 import { CardInfoScreen } from '../screens/CardInfoScreen';
 import { PaymentSummaryScreen } from '../screens/PaymentSummaryScreen';
 import { TransactionStatusScreen } from '../screens/TransactionStatusScreen';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -26,58 +28,76 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 /**
- * Root stack navigator — 7 screens:
- * Splash → Home → SelectProduct → Checkout → CardInfo → PaymentSummary → TransactionStatus
+ * Inner navigator content — runs inside ThemeProvider context so useTheme() works.
+ */
+function AppNavigatorContent() {
+  const theme = useTheme();
+  const { colors } = theme;
+
+  return (
+    <Stack.Navigator
+      initialRouteName="Splash"
+      screenOptions={{
+        headerShown: true,
+        headerStyle: {
+          backgroundColor: colors.headerBackground,
+        },
+        headerTintColor: colors.tint,
+        headerTitleStyle: { fontWeight: '600' },
+        headerBackTitleVisible: false,
+        contentStyle: { backgroundColor: colors.background },
+      }}
+    >
+      <Stack.Screen
+        name="Splash"
+        component={SplashScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          title: 'Products',
+          headerRight: () => <ThemeToggle />,
+        }}
+      />
+      <Stack.Screen
+        name="SelectProduct"
+        component={SelectProductScreen}
+        options={{ title: 'Select Product' }}
+      />
+      <Stack.Screen
+        name="Checkout"
+        component={CheckoutScreen}
+        options={{ title: 'Checkout' }}
+      />
+      <Stack.Screen
+        name="CardInfo"
+        component={CardInfoScreen}
+        options={{ title: 'Card Info' }}
+      />
+      <Stack.Screen
+        name="PaymentSummary"
+        component={PaymentSummaryScreen}
+        options={{ title: 'Payment Summary' }}
+      />
+      <Stack.Screen
+        name="TransactionStatus"
+        component={TransactionStatusScreen}
+        options={{ title: 'Status', headerBackVisible: false }}
+      />
+    </Stack.Navigator>
+  );
+}
+
+/**
+ * Root stack navigator — wrapped in NavigationContainer.
+ * Themed content lives in AppNavigatorContent so useTheme() has access to ThemeProvider.
  */
 export function AppNavigator() {
   return (
     <NavigationContainer>
-      <Stack.Navigator
-        initialRouteName="Splash"
-        screenOptions={{
-          headerShown: true,
-          headerStyle: { backgroundColor: '#fff' },
-          headerTintColor: '#1a1a1a',
-          headerTitleStyle: { fontWeight: '600' },
-          headerBackTitleVisible: false,
-        }}
-      >
-        <Stack.Screen
-          name="Splash"
-          component={SplashScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Home"
-          component={HomeScreen}
-          options={{ title: 'Products' }}
-        />
-        <Stack.Screen
-          name="SelectProduct"
-          component={SelectProductScreen}
-          options={{ title: 'Select Product' }}
-        />
-        <Stack.Screen
-          name="Checkout"
-          component={CheckoutScreen}
-          options={{ title: 'Checkout' }}
-        />
-        <Stack.Screen
-          name="CardInfo"
-          component={CardInfoScreen}
-          options={{ title: 'Card Info' }}
-        />
-        <Stack.Screen
-          name="PaymentSummary"
-          component={PaymentSummaryScreen}
-          options={{ title: 'Payment Summary' }}
-        />
-        <Stack.Screen
-          name="TransactionStatus"
-          component={TransactionStatusScreen}
-          options={{ title: 'Status', headerBackVisible: false }}
-        />
-      </Stack.Navigator>
+      <AppNavigatorContent />
     </NavigationContainer>
   );
 }
