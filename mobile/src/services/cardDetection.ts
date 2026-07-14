@@ -85,10 +85,27 @@ const BRAND_DISPLAY_NAMES: Record<CardBrand, string> = {
   unknown: '',
 };
 
-/**
- * Get the human-readable display name for a detected card brand.
- * 'unknown' resolves to an empty string so callers can conditionally render.
- */
 export function getBrandName(brand: CardBrand): string {
   return BRAND_DISPLAY_NAMES[brand];
 }
+
+/**
+ * Get the brand logo image source for display.
+ * Returns a require()'d asset path for the brand logo.
+ * M8: Returns ImageSource instead of string literal.
+ */
+export function getBrandLogo(brand: CardBrand): ImageSourcePropType {
+  const logos: Record<CardBrand, ImageSourcePropType> = {
+    visa: require('../assets/images/visa.png'),
+    mastercard: require('../assets/images/mastercard.png'),
+    amex: require('../assets/images/amex.png'),
+    diners: require('../assets/images/diners.png'),
+    discover: require('../assets/images/discover.png'),
+    elo: require('../assets/images/elo.png'),
+    hipercard: require('../assets/images/hipercard.png'),
+    unknown: require('../assets/images/unknown-card.png'),
+  };
+  return logos[brand] ?? logos.unknown;
+}
+
+export type ImageSourcePropType = number | { uri: string } | Array<{ uri: string }>;

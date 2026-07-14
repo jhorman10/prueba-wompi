@@ -10,7 +10,7 @@ async function bootstrap() {
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  app.enableCors(buildCorsOptions());
+  app.enableCors(buildCorsOptions(config.nodeEnv));
 
   app.useStaticAssets(join(__dirname, '..', 'public', 'images'), {
     prefix: '/images',

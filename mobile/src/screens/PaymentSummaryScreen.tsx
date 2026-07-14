@@ -20,10 +20,14 @@ import { clearCart } from '../store/slices/cartSlice';
 import { PriceTag } from '../components/PriceTag';
 import { Toast } from '../components/Toast';
 import { getApiClientInstance } from '../services/api';
-import { processPayment } from '../services/paymentService';
-import { selectTotalCents, selectGetProduct } from '../store/selectors';
-import { getBrandName, CardBrand } from '../services/cardDetection';
+import { processPayment, type PaymentItem } from '../services/paymentService';
+import { selectTotalCents, selectCartItemsWithProducts } from '../store/selectors';
+import { getBrandName, getBrandLogo, CardBrand } from '../services/cardDetection';
 import { useTheme, Theme } from '../theme/ThemeContext';
+import { RootStackParamList } from '../navigation/types';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+type PaymentSummaryScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'PaymentSummary'>;
 
 interface PaymentSummaryScreenProps {
   navigation?: {
@@ -78,7 +82,7 @@ export function PaymentSummaryScreen({
   const dismissToast = useCallback(() => setToastMessage(null), []);
 
   const totalCents = useSelector(selectTotalCents);
-  const getProduct = useSelector(selectGetProduct);
+  const cartItemsWithProducts = useSelector(selectCartItemsWithProducts);
 
   const cardLastFour = routeCardNumber.slice(-4) ?? checkout.cardInfo?.lastFour ?? '';
   const cardBrandName = checkout.cardInfo?.brand ?? 'unknown';
@@ -103,16 +107,22 @@ export function PaymentSummaryScreen({
         return;
       }
 
+      // B2: Capture sensitive data BEFORE clearCardInfo()
+      const capturedCardLastFour = routeCardNumber.slice(-4) ?? checkout.cardInfo?.lastFour ?? '';
+      const capturedCardholderName = checkout.cardInfo?.cardholderName ?? '';
+
       const api = getApiClientInstance();
       const cardInfo = {
         number: routeCardNumber,
         expiry: routeCardExpiry,
         cvc: routeCardCvc,
-        cardholderName,
+        cardholderName: capturedCardholderName,
       };
-      const items = cartItems.map((ci) => ({
+      const items: PaymentItem[] = cartItemsWithProducts.map((ci) => ({
         productId: ci.productId,
         quantity: ci.quantity,
+        unitPrice: ci.unitPrice,
+        productName: ci.productName,
       }));
 
       const { transaction, token } = await processPayment(
@@ -140,7 +150,7 @@ export function PaymentSummaryScreen({
     checkout,
     cartItems,
     totalCents,
-    getProduct,
+    cartItemsWithProducts,
     dispatch,
     navigation,
     routeCardNumber,
@@ -158,23 +168,17 @@ export function PaymentSummaryScreen({
         {/* Order items section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Items</Text>
-          {cartItems.map((item) => {
-            const product = getProduct(item.productId);
-            return (
-              <View key={item.productId} style={styles.itemRow}>
-                <View style={styles.itemInfo}>
-                  <Text style={styles.itemName} numberOfLines={1}>
-                    {product?.name ?? 'Unknown'}
-                  </Text>
-                  <Text style={styles.itemQty}>Qty: {item.quantity}</Text>
-                </View>
-                <PriceTag
-                  cents={(product?.price ?? 0) * item.quantity}
-                  style={styles.itemPrice}
-                />
+          {cartItemsWithProducts.map((item) => (
+            <View key={item.productId} style={styles.itemRow}>
+              <View style={styles.itemInfo}>
+                <Text style={styles.itemName} numberOfLines={1}>
+                  {item.productName}
+                </Text>
+                <Text style={styles.itemQty}>Qty: {item.quantity}</Text>
               </View>
-            );
-          })}
+              <PriceTag cents={item.unitPrice * item.quantity} style={styles.itemPrice} />
+            </View>
+          ))}
         </View>
 
         {/* Payment method section with compact card preview */}
